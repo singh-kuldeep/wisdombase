@@ -34,7 +34,30 @@ def get_current_user_id(authorization: str = Header(default="")) -> str:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not resolve user from token.",
         )
-    return user.id
+
+    user_id = user.id
+
+    # Check if user is soft-deleted
+    try:
+        profile_resp = (
+            supabase.table("profiles")
+            .select("deleted_at")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if profile_resp.data and profile_resp.data[0].get("deleted_at") is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This account has been deleted.",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        # If the check fails (e.g., deleted_at column doesn't exist yet), allow access
+        pass
+
+    return user_id
 
 
 CurrentUser = Depends(get_current_user_id)

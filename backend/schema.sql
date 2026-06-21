@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   llm_provider TEXT DEFAULT 'anthropic',
   memory_profile TEXT,
   memory_updated_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ DEFAULT NULL
 );
 
 -- Idempotent migration for databases created before long-term memory existed.
@@ -17,6 +18,9 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS memory_updated_at TIMESTAMP
 
 -- Per-user count of free questions answered with the shared backend key.
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS free_questions_used INTEGER DEFAULT 0;
+
+-- Soft delete support for user accounts
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
 
 CREATE TABLE IF NOT EXISTS public.entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

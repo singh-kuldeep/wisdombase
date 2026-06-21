@@ -562,10 +562,12 @@ def delete_account(user_id: str = CurrentUser):
     """Delete user account and all associated data.
 
     This will:
-    1. Delete all user entries and chunks (via CASCADE)
-    2. Delete user profile
-    3. Delete user from Supabase Auth
-    4. Send confirmation email to the user
+    1. Hard delete all user entries and chunks (via CASCADE)
+    2. Soft delete user in profiles table (set deleted_at timestamp)
+    3. Send confirmation email to the user
+
+    The user remains in Supabase Auth but is marked as deleted in our system.
+    All their data (entries, chunks, memory) is permanently removed.
     """
     supabase = get_supabase()
 
@@ -577,11 +579,16 @@ def delete_account(user_id: str = CurrentUser):
         user_email = None
 
     try:
-        # Delete profile (entries and chunks will cascade due to ON DELETE CASCADE)
-        supabase.table("profiles").delete().eq("id", user_id).execute()
+        # Hard delete all entries (chunks will cascade due to ON DELETE CASCADE)
+        supabase.table("entries").delete().eq("user_id", user_id).execute()
 
-        # Delete user from Supabase Auth (this also triggers cascading deletes)
-        supabase.auth.admin.delete_user(user_id)
+        # Soft delete the profile by setting deleted_at timestamp
+        supabase.table("profiles").upsert({
+            "id": user_id,
+            "deleted_at": datetime.now(timezone.utc).isoformat(),
+            "memory_profile": None,  # Clear sensitive data
+            "display_name": None,
+        }).execute()
 
         # Send confirmation email if we have the email address
         if user_email:
@@ -593,7 +600,7 @@ def delete_account(user_id: str = CurrentUser):
 
         return {
             "deleted": True,
-            "message": "Account and all associated data have been permanently deleted.",
+            "message": "Your account will be deleted and you will receive a confirmation email. All your data has been permanently removed.",
             "email_sent": bool(user_email)
         }
     except Exception as e:
