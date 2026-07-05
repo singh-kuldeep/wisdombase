@@ -1,0 +1,39 @@
+{
+  "cli": {
+    "version": ">= 20.1.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://irxfwbsfsnwvplobpskt.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlyeGZ3YnNmc253dnBsb2Jwc2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTExNjIsImV4cCI6MjA5NjMyNzE2Mn0.NJg-bzDsaqmmpa0hs3iAXzE-zqewB9NthUs5ryRS9vk",
+        "EXPO_PUBLIC_API_URL": "https://wisdombase-production.up.railway.app"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://irxfwbsfsnwvplobpskt.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlyeGZ3YnNmc253dnBsb2Jwc2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTExNjIsImV4cCI6MjA5NjMyNzE2Mn0.NJg-bzDsaqmmpa0hs3iAXzE-zqewB9NthUs5ryRS9vk",
+        "EXPO_PUBLIC_API_URL": "https://wisdombase-production.up.railway.app"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://irxfwbsfsnwvplobpskt.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlyeGZ3YnNmc253dnBsb2Jwc2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTExNjIsImV4cCI6MjA5NjMyNzE2Mn0.NJg-bzDsaqmmpa0hs3iAXzE-zqewB9NthUs5ryRS9vk",
+        "EXPO_PUBLIC_API_URL": "https://wisdombase-production.up.railway.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
