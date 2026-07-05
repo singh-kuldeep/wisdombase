@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +15,8 @@ import * as DocumentPicker from "expo-document-picker";
 import { ingest, ingestFiles, ingestUrls, type PickedFile } from "../../lib/api";
 import { GROUPS, DEFAULT_GROUP, parseTags } from "../../lib/constants";
 import { useEntries } from "../../stores/entryStore";
-import { colors, fonts } from "../../theme";
+import { useTheme } from "../theme-context";
+import { fonts } from "../../theme";
 
 // Files we can extract text from today. The backend decides what it can read;
 // this just hints the OS picker. Add new types here as the backend grows.
@@ -75,6 +76,9 @@ export default function Capture() {
     links.length ? `${links.length} link${links.length === 1 ? "" : "s"}` : null,
     attachments.length ? `${attachments.length} file${attachments.length === 1 ? "" : "s"}` : null,
   ].filter(Boolean);
+
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const pickFiles = async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -149,7 +153,10 @@ export default function Capture() {
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.lead}>Add a thought, web links, or files — all in one place.</Text>
+        <View style={styles.heroBanner}>
+          <Text style={styles.heroTitle}>Capture ideas, links, and documents in one flowing notebook.</Text>
+          <Text style={styles.heroSubtitle}>Every new thought becomes searchable, ready for later questions and memory building.</Text>
+        </View>
 
         <Text style={styles.label}>Collection</Text>
         <ScrollView
@@ -256,60 +263,80 @@ export default function Capture() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 18, paddingBottom: 24 },
-  lead: { fontSize: 15, color: colors.muted, lineHeight: 21, marginBottom: 18 },
+function createStyles(colors: typeof import("../../theme").colors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.bg },
+    content: { padding: 18, paddingBottom: 24 },
+    heroBanner: {
+    borderRadius: 24,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.surfaceMuted,
+    padding: 22,
+    marginBottom: 18,
+    shadowColor: colors.text,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 14 },
+    shadowRadius: 24,
+    elevation: 5,
+  },
+  heroTitle: { fontSize: 22, fontWeight: "800", color: colors.text, lineHeight: 30, marginBottom: 8 },
+  heroSubtitle: { color: colors.muted, fontSize: 15, lineHeight: 22 },
   label: {
     fontSize: 13,
     color: colors.muted,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     fontWeight: "700",
-    marginTop: 18,
-    marginBottom: 8,
+    marginTop: 6,
+    marginBottom: 10,
   },
-  chipRow: { gap: 8, paddingRight: 8, paddingBottom: 2 },
+  chipRow: { gap: 10, paddingRight: 8, paddingBottom: 2 },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.surfaceMuted,
     backgroundColor: colors.surface,
   },
   chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.muted, fontWeight: "600", fontSize: 13 },
+  chipText: { color: colors.muted, fontWeight: "700", fontSize: 13 },
   chipTextActive: { color: "#fff" },
   card: {
     marginTop: 16,
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 16,
+    borderRadius: 20,
+    paddingHorizontal: 18,
+    shadowColor: colors.text,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 20,
+    elevation: 4,
   },
-  title: { fontSize: 19, fontWeight: "600", color: colors.text, paddingVertical: 14 },
-  divider: { height: 1, backgroundColor: colors.border },
+  title: { fontSize: 20, fontWeight: "700", color: colors.text, paddingVertical: 18 },
+  divider: { height: 1, backgroundColor: colors.surfaceMuted },
   body: {
     minHeight: 160,
     fontSize: 17,
     lineHeight: 25,
     color: colors.text,
     fontFamily: fonts.serif,
-    paddingVertical: 14,
+    paddingVertical: 16,
   },
-  tags: { fontSize: 14, color: colors.text, paddingVertical: 13 },
-  help: { color: colors.muted, fontSize: 13, lineHeight: 19, marginBottom: 12 },
+  tags: { fontSize: 14, color: colors.text, paddingVertical: 14 },
+  help: { color: colors.muted, fontSize: 14, lineHeight: 20, marginBottom: 12 },
   links: {
     minHeight: 64,
     maxHeight: 130,
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     fontSize: 14,
     color: colors.text,
   },
@@ -318,36 +345,47 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     borderWidth: 1,
     borderStyle: "dashed",
-    borderRadius: 12,
-    paddingVertical: 14,
+    borderRadius: 16,
+    paddingVertical: 16,
     alignItems: "center",
     backgroundColor: colors.accentSoft,
   },
   attachText: { color: colors.accent, fontWeight: "700", fontSize: 15 },
   fileChip: {
-    marginTop: 8,
+    marginTop: 10,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   fileChipText: { flex: 1, color: colors.text, fontSize: 14, marginRight: 10 },
   fileChipX: { color: colors.muted, fontSize: 15, fontWeight: "700" },
   footer: {
     paddingHorizontal: 18,
-    paddingTop: 10,
+    paddingTop: 14,
     paddingBottom: 18,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: colors.surfaceMuted,
     backgroundColor: colors.surface,
   },
-  queued: { textAlign: "center", color: colors.muted, fontSize: 13, marginBottom: 8 },
-  primary: { backgroundColor: colors.accent, borderRadius: 14, padding: 16, alignItems: "center" },
+  queued: { textAlign: "center", color: colors.muted, fontSize: 13, marginBottom: 10 },
+  primary: {
+    backgroundColor: colors.accent,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    shadowColor: colors.accent,
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 20,
+    elevation: 4,
+  },
   primaryText: { color: "#fff", fontWeight: "700", fontSize: 16 },
   disabled: { opacity: 0.45 },
-});
+  });
+}

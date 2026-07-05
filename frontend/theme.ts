@@ -1,34 +1,37 @@
-// Warm, personal, intentional palette — aubergine + teal on off-white.
-// Aubergine = primary action; teal = the AI layer; gold = special moments.
+// Refined palette for calm clarity: soft whites, teal accents, and grounded text.
 export const colors = {
-  // Backgrounds
-  bg: "#F8F9F5", // Off-White — main background
-  surface: "#FEFCF9", // warm near-white — cards, inputs, bubbles
-  cream: "#E8D5C4", // Warm Cream — subtle warm accents
+  bg: "#F6F7FA",
+  surface: "#FFFFFF",
+  surfaceSoft: "#F4F7FB",
+  surfaceMuted: "#EBF1F8",
+  text: "#111827",
+  muted: "#5e6090",
+  accent: "#777ae8",
+  accentSoft: "#E6F4F3",
+  teal: "#777ae8",
+  tealSoft: "#d3d4f5",
+  border: "#d3d4f5",
+  gold: "#D99F4A",
+  danger: "#C23C3C",
+};
 
-  // Text
-  text: "#3D3A37", // dark brown-gray — primary copy
-  muted: "#8B7A6B", // Warm Gray — secondary text, metadata, borders' kin
-  aiText: "#4A4159", // dark gray-brown — AI content copy
-
-  // Borders & separation
-  border: "#C5BCC9", // Lavender Gray — gentle borders & dividers
-
-  // Primary (Aubergine)
-  accent: "#6B5FB1", // primary action, buttons, interactive
-  accentHover: "#5A4FA3", // darker aubergine — hover/active
-  accentSoft: "#F0EEF4", // light lavender — tertiary buttons, soft fills
-
-  // AI layer (Teal)
-  teal: "#4DB8A8", // AI insights, accent highlights
-  tealSoft: "#EAF5F2", // flat light-teal tint — AI section backgrounds
-
-  // Highlights & feedback
-  gold: "#DAA455", // Warm Gold — badges, encouragement, special moments
-  danger: "#B23A3A",
+export const darkColors = {
+  bg: "#0F172A",
+  surface: "#111B2B",
+  surfaceSoft: "#172338",
+  surfaceMuted: "#1E2A3B",
+  text: "#E2E8F0",
+  muted: "#5e6090",
+  accent: "#777ae8",
+  accentSoft: "#153C43",
+  teal: "#777ae8",
+  tealSoft: "#153A41",
+  border: "#243445",
+  gold: "#D4A255",
+  danger: "#F87171",
 };
 
 export const fonts = {
-  serif: "Georgia",
   sans: "System",
+  serif: "Georgia",
 };

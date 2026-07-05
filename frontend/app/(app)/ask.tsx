@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -16,7 +16,8 @@ import { getProviderKeys } from "../../lib/secureStore";
 import ChatMessage, { type Message } from "../../components/ChatMessage";
 import LoadingDots from "../../components/LoadingDots";
 import { useEntries } from "../../stores/entryStore";
-import { colors, fonts } from "../../theme";
+import { useTheme } from "../theme-context";
+import { fonts } from "../../theme";
 
 export default function Ask() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -87,6 +88,9 @@ export default function Ask() {
     }
   };
 
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   const selectedEntry = selectedSource ? entries.find((entry) => entry.id === selectedSource.entry_id) : null;
   const sourceDetailTitle = selectedEntry?.title || selectedSource?.title || "Source detail";
   const sourceDetailDate = selectedEntry?.created_at.slice(0, 10) || selectedSource?.date;
@@ -127,6 +131,12 @@ export default function Ask() {
         </View>
       ) : messages.length === 0 && !loading ? (
         <ScrollView contentContainerStyle={styles.empty}>
+          <View style={styles.heroBanner}>
+            <Text style={styles.heroTitle}>Ask your thinking, not the internet.</Text>
+            <Text style={styles.heroSubtitle}>
+              Grow smarter answers from your own notes and reflections. Get focused replies that feel like your own memory.
+            </Text>
+          </View>
           <Text style={styles.emptyTitle}>Ask your own thinking</Text>
           <Text style={styles.emptyBody}>
             Tap a question to start — these draw on built-in wisdom, so you can ask
@@ -191,54 +201,72 @@ export default function Ask() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  list: { padding: 14 },
-  empty: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 28 },
-  emptyTitle: { fontSize: 22, fontFamily: fonts.serif, color: colors.text, marginBottom: 8 },
-  emptyBody: { fontSize: 15, color: colors.muted, textAlign: "center", lineHeight: 22 },
-  freeNote: { marginTop: 14, fontSize: 13, fontWeight: "700", color: colors.teal, textAlign: "center" },
-  freeNoteWarn: { marginTop: 14, fontSize: 13, color: colors.danger, textAlign: "center", lineHeight: 19 },
-  suggestions: { marginTop: 22, alignSelf: "stretch", gap: 10 },
-  suggestion: {
-    backgroundColor: colors.tealSoft,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.teal,
-    borderRadius: 12,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-  },
-  suggestionText: { color: colors.text, fontSize: 15, lineHeight: 20 },
-  bar: {
-    flexDirection: "row",
-    padding: 10,
-    gap: 8,
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
-    backgroundColor: colors.surface,
-    alignItems: "flex-end",
-  },
-  newAskButton: {
-    height: 44,
-    paddingHorizontal: 14,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: colors.accentSoft,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  newAskText: { color: colors.accent, fontWeight: "700", fontSize: 14 },
-  detailContainer: { flex: 1, backgroundColor: colors.bg },
-  detailHeader: {
-    flexDirection: "row",
+function createStyles(colors: typeof import("../../theme").colors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.bg },
+    list: { padding: 16 },
+    empty: { flexGrow: 1, justifyContent: "center", alignItems: "center", padding: 28 },
+    heroBanner: {
+      marginBottom: 24,
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      padding: 22,
+      borderWidth: 1,
+      borderColor: colors.surfaceMuted,
+      shadowColor: colors.text,
+      shadowOpacity: 0.08,
+      shadowOffset: { width: 0, height: 14 },
+      shadowRadius: 24,
+      elevation: 5,
+    },
+    heroTitle: { fontSize: 22, fontWeight: "800", color: colors.text, lineHeight: 30, marginBottom: 8, textAlign: "center" },
+    heroSubtitle: { fontSize: 15, color: colors.muted, lineHeight: 22, textAlign: "center" },
+    emptyTitle: { fontSize: 22, fontFamily: fonts.serif, color: colors.text, marginBottom: 12, textAlign: "center" },
+    emptyBody: { fontSize: 15, color: colors.muted, textAlign: "center", lineHeight: 22, marginBottom: 18 },
+    freeNote: { marginTop: 14, fontSize: 13, fontWeight: "700", color: colors.teal, textAlign: "center" },
+    freeNoteWarn: { marginTop: 14, fontSize: 13, color: colors.danger, textAlign: "center", lineHeight: 19 },
+    suggestions: { marginTop: 22, alignSelf: "stretch", gap: 12 },
+    suggestion: {
+      backgroundColor: colors.surface,
+      borderColor: colors.surfaceMuted,
+      borderWidth: 1,
+      borderRadius: 16,
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      shadowColor: colors.text,
+      shadowOpacity: 0.06,
+      shadowOffset: { width: 0, height: 10 },
+      shadowRadius: 18,
+      elevation: 3,
+    },
+    suggestionText: { color: colors.text, fontSize: 15, lineHeight: 22 },
+    bar: {
+      flexDirection: "row",
+      padding: 14,
+      gap: 10,
+      borderTopColor: colors.surfaceMuted,
+      borderTopWidth: 1,
+      backgroundColor: colors.surface,
+      alignItems: "flex-end",
+    },
+    newAskButton: {
+      height: 44,
+      paddingHorizontal: 16,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      backgroundColor: colors.accentSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    newAskText: { color: colors.accent, fontWeight: "700", fontSize: 14 },
+    detailContainer: { flex: 1, backgroundColor: colors.bg },
+    detailHeader: {
     alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.surfaceMuted,
     backgroundColor: colors.surface,
   },
   backButton: { marginRight: 12, paddingVertical: 6, paddingHorizontal: 10 },
@@ -254,16 +282,29 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     maxHeight: 120,
-    backgroundColor: colors.bg,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.surfaceMuted,
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     fontSize: 16,
     color: colors.text,
   },
-  send: { backgroundColor: colors.accent, width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center" },
-  sendText: { color: "#fff", fontSize: 22, fontWeight: "700" },
+  send: {
+    backgroundColor: colors.accent,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.accent,
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  sendText: { color: "#fff", fontSize: 24, fontWeight: "800" },
   disabled: { opacity: 0.4 },
-});
+  });
+}

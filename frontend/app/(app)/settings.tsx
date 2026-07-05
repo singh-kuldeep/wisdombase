@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,8 @@ import {
 } from "../../lib/secureStore";
 import { getMemory, refreshMemory, deleteAccount } from "../../lib/api";
 import { useAuth } from "../../stores/authStore";
-import { colors, fonts } from "../../theme";
+import { useTheme } from "../theme-context";
+import { fonts } from "../../theme";
 
 export default function Settings() {
   const router = useRouter();
@@ -29,6 +30,8 @@ export default function Settings() {
   const [memory, setMemory] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     getProviderKeys().then((keys) => {
@@ -286,74 +289,81 @@ export default function Settings() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20 },
-  label: { fontSize: 13, color: colors.muted, textTransform: "uppercase", letterSpacing: 0.5 },
+function createStyles(colors: typeof import("../../theme").colors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.bg },
+  content: { padding: 20, paddingBottom: 32 },
+  label: { fontSize: 13, color: colors.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
   value: { fontSize: 17, color: colors.text, marginTop: 4 },
   section: { marginTop: 28 },
-  hint: { fontSize: 13, color: colors.muted, lineHeight: 19, marginTop: 6, marginBottom: 14 },
+  hint: { fontSize: 13, color: colors.muted, lineHeight: 20, marginTop: 6, marginBottom: 14 },
   providerCard: {
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
+    shadowColor: colors.text,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 14 },
+    shadowRadius: 24,
+    elevation: 5,
   },
   providerHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  providerLabel: { fontSize: 15, fontWeight: "600", color: colors.text },
+  providerLabel: { fontSize: 16, fontWeight: "700", color: colors.text },
   priorityRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   priorityBadge: { fontSize: 12, fontWeight: "700", color: colors.accent },
   arrow: { fontSize: 18, color: colors.accent, fontWeight: "700" },
-  arrowOff: { color: colors.border },
+  arrowOff: { color: colors.surfaceMuted },
   input: {
-    backgroundColor: colors.bg,
-    borderColor: colors.border,
+    backgroundColor: colors.surfaceSoft,
+    borderColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
+    borderRadius: 14,
+    padding: 14,
     fontSize: 15,
     color: colors.text,
+    marginTop: 8,
   },
-  providerHint: { fontSize: 12, color: colors.muted, marginTop: 6 },
-  primary: { backgroundColor: colors.accent, borderRadius: 12, padding: 14, alignItems: "center", marginTop: 4 },
-  primaryText: { color: "#fff", fontWeight: "600" },
+  providerHint: { fontSize: 12, color: colors.muted, marginTop: 8 },
+  primary: { backgroundColor: colors.accent, borderRadius: 16, padding: 16, alignItems: "center", marginTop: 10 },
+  primaryText: { color: "#fff", fontWeight: "700", fontSize: 15 },
   memoryBox: {
     backgroundColor: colors.tealSoft,
-    borderColor: colors.border,
-    borderLeftWidth: 4,
+    borderLeftWidth: 5,
     borderLeftColor: colors.teal,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 14,
   },
-  memoryText: { color: colors.aiText, fontSize: 14, lineHeight: 21 },
+  memoryText: { color: colors.text, fontSize: 15, lineHeight: 24 },
   memoryEmpty: { color: colors.muted, fontSize: 14, marginBottom: 12, fontStyle: "italic" },
   secondaryBtn: {
     borderColor: colors.accent,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 16,
+    padding: 16,
     alignItems: "center",
+    marginBottom: 8,
   },
-  secondaryBtnText: { color: colors.accent, fontWeight: "600" },
+  secondaryBtnText: { color: colors.accent, fontWeight: "700" },
   disabled: { opacity: 0.5 },
-  signOut: { marginTop: 36, padding: 14, alignItems: "center" },
-  signOutText: { color: colors.danger, fontSize: 16, fontWeight: "600" },
+  signOut: { marginTop: 28, padding: 14, alignItems: "center" },
+  signOutText: { color: colors.danger, fontSize: 16, fontWeight: "700" },
   deleteAccountBtn: {
     backgroundColor: colors.danger,
-    borderRadius: 12,
-    padding: 14,
+    borderRadius: 16,
+    padding: 16,
     alignItems: "center",
     marginTop: 8,
   },
-  deleteAccountText: { color: "#fff", fontSize: 15, fontWeight: "600" },
-  version: { textAlign: "center", color: colors.muted, marginTop: 20, marginBottom: 40, fontFamily: fonts.serif },
-});
+  deleteAccountText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  version: { textAlign: "center", color: colors.muted, marginTop: 22, marginBottom: 40, fontFamily: fonts.serif },
+  });
+}

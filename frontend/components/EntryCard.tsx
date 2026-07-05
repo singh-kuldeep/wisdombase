@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { Entry } from "../lib/api";
-import { colors, fonts } from "../theme";
+import { useTheme } from "../app/theme-context";
+import { fonts } from "../theme";
 
 export default function EntryCard({
   entry,
@@ -18,6 +20,9 @@ export default function EntryCard({
   const group = entry.group_name?.trim();
   const tags = (entry.tags ?? []).filter(Boolean);
   const isGeneric = group?.toLowerCase() === "generic";
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <TouchableOpacity
       style={[styles.card, selected && styles.selectedCard]}
@@ -53,40 +58,45 @@ export default function EntryCard({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+function createStyles(colors: typeof import("../theme").colors) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 14,
     borderWidth: 1,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.muted,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
+    borderColor: colors.surfaceMuted,
+    shadowColor: colors.text,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 15 },
+    shadowRadius: 22,
+    elevation: 5,
   },
   selectedCard: {
     borderColor: colors.accent,
-    borderLeftColor: colors.accent,
     backgroundColor: colors.tealSoft,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 10,
   },
-  title: { fontSize: 17, fontWeight: "600", color: colors.text, flex: 1, marginRight: 10 },
+  title: { fontSize: 18, fontWeight: "700", color: colors.text, flex: 1, marginRight: 10 },
   selectedLabel: { color: colors.accent, fontSize: 12, fontWeight: "700" },
-  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4, marginBottom: 6 },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 },
   groupPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     backgroundColor: colors.accentSoft,
   },
   groupPillGeneric: { backgroundColor: colors.tealSoft },
   groupPillText: { fontSize: 11, fontWeight: "700", color: colors.accent },
   groupPillTextGeneric: { color: colors.teal },
   date: { fontSize: 12, color: colors.muted },
-  preview: { fontSize: 14, color: colors.muted, fontFamily: fonts.serif, lineHeight: 20 },
-  tags: { fontSize: 12, color: colors.teal, marginTop: 6, fontWeight: "600" },
-});
+  preview: { fontSize: 14, color: colors.muted, fontFamily: fonts.serif, lineHeight: 22 },
+  tags: { fontSize: 12, color: colors.teal, marginTop: 10, fontWeight: "700" },
+  });
+}
