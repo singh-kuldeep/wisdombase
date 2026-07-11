@@ -188,6 +188,15 @@ export default function Ask() {
           onChangeText={setInput}
           multiline
           onSubmitEditing={() => send()}
+          onKeyPress={(e) => {
+            // On web, Enter should submit the question (keep Shift+Enter for newline if supported).
+            if (Platform.OS === "web" && (e.nativeEvent as any).key === "Enter") {
+              try {
+                (e as any).preventDefault?.();
+              } catch {}
+              send();
+            }
+          }}
         />
         <TouchableOpacity
           style={[styles.send, (!input.trim() || loading) && styles.disabled]}
