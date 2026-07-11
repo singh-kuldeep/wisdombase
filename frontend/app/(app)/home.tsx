@@ -1,4 +1,4 @@
-import React, { ComponentProps, useEffect, useMemo } from "react";
+import React, { ComponentProps, useEffect, useMemo, useCallback } from "react";
 import {
   FlatList,
   ScrollView,
@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import type { Entry } from "../../lib/api";
@@ -47,12 +48,13 @@ export default function Home() {
   const router = useRouter();
   const { entries, loading, load } = useEntries();
   const { colors } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
 
   useEffect(() => {
     load();
   }, []);
 
-  const styles = useMemo(() => createStyles(colors), [colors]);
+  const styles = useMemo(() => createStyles(colors, screenWidth), [colors, screenWidth]);
   const topWisdom = entries.slice(0, 10);
 
   return (
@@ -112,31 +114,26 @@ export default function Home() {
           <Text style={styles.secondaryActionText}>Ask your thinking</Text>
         </TouchableOpacity>
       </View>
-
-      <View style={styles.footerCard}>
-        <Text style={styles.footerTitle}>Quick navigation</Text>
-        <View style={styles.footerButtons}>
-          <TouchableOpacity style={styles.footerButton} onPress={() => router.push("/(app)/ask")}> 
-            <Text style={styles.footerButtonText}>Ask</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.footerButton} onPress={() => router.push("/(app)/capture")}> 
-            <Text style={styles.footerButtonText}>Capture</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.footerButton} onPress={() => router.push("/(app)/settings")}> 
-            <Text style={styles.footerButtonText}>Settings</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
     </ScrollView>
   );
 }
 
-const TILE_WIDTH = 168;
-
 type ThemeColors = typeof colors;
 
-const createStyles = (colors: ThemeColors) =>
-  StyleSheet.create({
+const createStyles = (colors: ThemeColors, screenWidth: number) => {
+  // Determine a responsive tile width based on available screen width.
+  // Keep gaps/padding in mind: content padding is 20 on each side and
+  // carousel gap is ~14 between tiles. We'll compute columns dynamically.
+  const contentPadding = 40; // left+right padding from container
+  const gap = 14; // gap between tiles in carousel
+  let columns = 1;
+  if (screenWidth >= 1100) columns = 4;
+  else if (screenWidth >= 800) columns = 3;
+  else if (screenWidth >= 480) columns = 2;
+
+  const tileWidth = Math.floor((screenWidth - contentPadding - (columns - 1) * gap) / columns);
+
+  return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg },
     content: { padding: 20, paddingBottom: 36 },
     topBar: {
@@ -195,7 +192,7 @@ const createStyles = (colors: ThemeColors) =>
     seeAll: { fontSize: 14, color: colors.accent, fontWeight: "700" },
     carousel: { gap: 14, paddingRight: 8, paddingBottom: 4 },
     tile: {
-      width: TILE_WIDTH,
+      width: tileWidth,
       backgroundColor: colors.surface,
       borderRadius: 20,
       padding: 16,
@@ -268,4 +265,4 @@ const createStyles = (colors: ThemeColors) =>
       alignItems: "center",
     },
     footerButtonText: { color: colors.accent, fontWeight: "700" },
-  });
+  })};

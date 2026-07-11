@@ -153,10 +153,10 @@ export default function Capture() {
         keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.heroBanner}>
+        {/* <View style={styles.heroBanner}>
           <Text style={styles.heroTitle}>Capture ideas, links, and documents in one flowing notebook.</Text>
           <Text style={styles.heroSubtitle}>Every new thought becomes searchable, ready for later questions and memory building.</Text>
-        </View>
+        </View> */}
 
         <Text style={styles.label}>Collection</Text>
         <ScrollView
