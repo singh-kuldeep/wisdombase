@@ -15,7 +15,8 @@ import { useRouter } from "expo-router";
 import EntryCard from "../../../components/EntryCard";
 import { deleteEntries } from "../../../lib/api";
 import { useEntries } from "../../../stores/entryStore";
-import { colors, fonts } from "../../../theme";
+import { useTheme } from "../../theme-context";
+import { fonts } from "../../../theme";
 
 export default function Browse() {
   const router = useRouter();
@@ -29,6 +30,9 @@ export default function Browse() {
   useEffect(() => {
     load();
   }, []);
+
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   const groups = useMemo(() => {
     const set = new Set<string>();
@@ -106,6 +110,11 @@ export default function Browse() {
   return (
     <View style={styles.container}>
       <View style={styles.toolbar}>
+        <Text style={styles.headerTitle}>Browse your collection</Text>
+        <Text style={styles.summary}>{filtered.length} entries</Text>
+      </View>
+
+      <View style={styles.toolbarRow}>
         <TextInput
           style={styles.search}
           placeholder="Search your entries"
@@ -126,18 +135,22 @@ export default function Browse() {
         >
           <Text style={styles.actionButtonText}>{selectionMode ? "Cancel" : "Select"}</Text>
         </TouchableOpacity>
-        {selectionMode ? (
+      </View>
+
+      {selectionMode ? (
+        <View style={styles.selectionBar}>
+          <Text style={styles.selectionText}>{selectedIds.length} selected</Text>
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteButton, selectedIds.length === 0 && styles.disabled]}
             onPress={handleDelete}
             disabled={!selectedIds.length || deleting}
           >
             <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
-              {selectedIds.length ? "Delete (" + selectedIds.length + ")" : "Delete"}
+              {selectedIds.length ? "Delete" : "Delete"}
             </Text>
           </TouchableOpacity>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
 
       {groups.length > 1 ? (
         <ScrollView
@@ -187,36 +200,69 @@ export default function Browse() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  toolbar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, gap: 10, paddingVertical: 10 },
+function createStyles(colors: typeof import("../../../theme").colors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.bg },
+    toolbar: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 6 },
+  headerTitle: { fontSize: 22, fontWeight: "800", color: colors.text, marginBottom: 4 },
+  summary: { color: colors.muted, fontSize: 13 },
+  toolbarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
+  },
   search: {
     flex: 1,
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.surfaceMuted,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 16,
+    padding: 14,
     fontSize: 15,
     color: colors.text,
+    shadowColor: colors.text,
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    elevation: 3,
   },
   actionButton: {
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    borderRadius: 16,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
     backgroundColor: colors.surface,
-    borderColor: colors.border,
+    borderColor: colors.surfaceMuted,
     borderWidth: 1,
   },
   actionButtonActive: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
   actionButtonText: { color: colors.text, fontWeight: "700" },
-  filterRow: { gap: 8, paddingHorizontal: 14, paddingBottom: 10 },
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+  selectionBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.surfaceMuted,
+    padding: 14,
+    marginHorizontal: 20,
+    marginBottom: 14,
+    shadowColor: colors.text,
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 12 },
+    shadowRadius: 14,
+    elevation: 3,
+  },
+  selectionText: { color: colors.text, fontWeight: "700" },
+  filterRow: { paddingHorizontal: 14, paddingBottom: 10, gap: 8 },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: colors.surfaceMuted,
     backgroundColor: colors.surface,
   },
   filterChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
@@ -227,4 +273,5 @@ const styles = StyleSheet.create({
   list: { padding: 14, paddingTop: 0, flexGrow: 1 },
   empty: { textAlign: "center", color: colors.muted, marginTop: 60, fontFamily: fonts.serif, fontSize: 16, paddingHorizontal: 30 },
   disabled: { opacity: 0.5 },
-});
+  });
+}

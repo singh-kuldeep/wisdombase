@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -11,7 +11,8 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { fetchEntry, deleteEntries, type Entry } from "../../../lib/api";
-import { colors, fonts } from "../../../theme";
+import { useTheme } from "../../theme-context";
+import { fonts } from "../../../theme";
 
 export default function EntryDetail() {
   const params = useLocalSearchParams();
@@ -20,6 +21,8 @@ export default function EntryDetail() {
   const [entry, setEntry] = useState<Entry | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
 
   useEffect(() => {
     if (!id) return;
@@ -101,17 +104,41 @@ export default function EntryDetail() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: 18 },
+function createStyles(colors: typeof import("../../../theme").colors) {
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.bg, padding: 18 },
   loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.bg },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  backButton: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
+  backButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderColor: colors.surfaceMuted,
+    borderWidth: 1,
+    shadowColor: colors.text,
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    elevation: 3,
+  },
   backButtonText: { color: colors.text, fontWeight: "700" },
-  deleteButton: { paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, backgroundColor: colors.accent },
+  deleteButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOpacity: 0.16,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    elevation: 4,
+  },
   deleteButtonText: { color: "#fff", fontWeight: "700" },
-  content: { paddingBottom: 30 },
-  title: { fontSize: 24, fontWeight: "700", color: colors.text, marginBottom: 10 },
-  date: { fontSize: 12, color: colors.muted, marginBottom: 18 },
-  body: { fontSize: 16, lineHeight: 24, color: colors.text, fontFamily: fonts.serif },
+  content: { paddingBottom: 30, backgroundColor: colors.surface, borderRadius: 24, padding: 22, borderWidth: 1, borderColor: colors.surfaceMuted, shadowColor: colors.text, shadowOpacity: 0.08, shadowOffset: { width: 0, height: 14 }, shadowRadius: 26, elevation: 6 },
+  title: { fontSize: 26, fontWeight: "800", color: colors.text, marginBottom: 10 },
+  date: { fontSize: 13, color: colors.muted, marginBottom: 18 },
+  body: { fontSize: 16, lineHeight: 26, color: colors.text, fontFamily: fonts.serif },
   empty: { color: colors.muted, fontSize: 16 },
-});
+  });
+}

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import React, { ComponentProps, useEffect, useMemo, useCallback } from "react";
 import {
   FlatList,
   ScrollView,
@@ -6,13 +6,21 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import type { Entry } from "../../lib/api";
 import { useEntries } from "../../stores/entryStore";
+import { useTheme } from "../theme-context";
 import { colors, fonts } from "../../theme";
+import { Feather } from "@expo/vector-icons";
 
-function WisdomTile({ entry, onPress }: { entry: Entry; onPress: () => void }) {
+function Icon({ name, focused }: { name: ComponentProps<typeof Feather>["name"]; focused: boolean }) {
+  const { colors } = useTheme();
+  return <Feather name={name} size={20} color={focused ? colors.accent : colors.muted} />;
+}
+
+function WisdomTile({ entry, onPress, styles }: { entry: Entry; onPress: () => void; styles: ReturnType<typeof createStyles> }) {
   const title = entry.title?.trim() || entry.content.split("\n")[0].slice(0, 50) || "Untitled";
   const group = entry.group_name?.trim();
   const isGeneric = group?.toLowerCase() === "generic";
@@ -39,21 +47,44 @@ function WisdomTile({ entry, onPress }: { entry: Entry; onPress: () => void }) {
 export default function Home() {
   const router = useRouter();
   const { entries, loading, load } = useEntries();
+  const { colors } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
 
   useEffect(() => {
     load();
   }, []);
 
+  const styles = useMemo(() => createStyles(colors, screenWidth), [colors, screenWidth]);
   const topWisdom = entries.slice(0, 10);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.greeting}>Your wisdom</Text>
-      <Text style={styles.sub}>Revisit what you've captured, then ask it anything.</Text>
+      {/* <View style={styles.topBar}>
+        <View>
+          <Text style={styles.greeting}>Your wisdom</Text>
+          <Text style={styles.sub}>Revisit what you've captured, then ask it anything.</Text>
+        </View>
+      </View> */}
+
+      <View style={styles.hero}>
+        
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View style={styles.heroBadge}>
+          <Text style={styles.heroBadgeText}>
+            <Icon name="star" focused={true} />
+          </Text>
+        </View>
+          <Text style={styles.heroTitle}>Your wisdom</Text>
+        </View>
+       
+        <Text style={styles.heroSubtitle}>
+          Capture your ideas, revisit them as smart cards, and ask questions with context built from your own thinking.
+        </Text>
+      </View>
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Past wisdom</Text>
-        <TouchableOpacity onPress={() => router.push("/(app)/browse")}>
+        <Text style={styles.sectionTitle}>Recent captures</Text>
+        <TouchableOpacity onPress={() => router.push("/(app)/browse")}> 
           <Text style={styles.seeAll}>See all</Text>
         </TouchableOpacity>
       </View>
@@ -66,79 +97,172 @@ export default function Home() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.carousel}
           renderItem={({ item }) => (
-            <WisdomTile entry={item} onPress={() => router.push(`/(app)/browse/${item.id}`)} />
+            <WisdomTile entry={item} onPress={() => router.push(`/(app)/browse/${item.id}`)} styles={styles} />
           )}
         />
       ) : (
         <Text style={styles.empty}>
-          {loading ? "Loading your wisdom…" : "Capture your first thought to see it here."}
+          {loading ? "Loading your knowledge…" : "Capture your first thought to see it here."}
         </Text>
       )}
 
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.primaryAction} onPress={() => router.push("/(app)/capture")}>
-          <Text style={styles.primaryActionText}>✎  Capture a thought</Text>
+        <TouchableOpacity style={styles.primaryAction} onPress={() => router.push("/(app)/capture")}> 
+          <Text style={styles.primaryActionText}>Capture a thought</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryAction} onPress={() => router.push("/(app)/ask")}>
-          <Text style={styles.secondaryActionText}>✦  Ask your thinking</Text>
+        <TouchableOpacity style={styles.secondaryAction} onPress={() => router.push("/(app)/ask")}> 
+          <Text style={styles.secondaryActionText}>Ask your thinking</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
   );
 }
 
-const TILE_WIDTH = 168;
+type ThemeColors = typeof colors;
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, paddingBottom: 32 },
-  greeting: { fontSize: 30, fontFamily: fonts.serif, color: colors.text },
-  sub: { fontSize: 15, color: colors.muted, marginTop: 6, lineHeight: 21 },
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 28,
-    marginBottom: 12,
-  },
-  sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
-  seeAll: { fontSize: 14, color: colors.accent, fontWeight: "600" },
-  carousel: { gap: 12, paddingRight: 8, paddingBottom: 4 },
-  tile: {
-    width: TILE_WIDTH,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.teal,
-    borderRadius: 12,
-    padding: 12,
-    minHeight: 120,
-  },
-  tilePill: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: colors.accentSoft,
-    marginBottom: 6,
-  },
-  tilePillGeneric: { backgroundColor: colors.tealSoft },
-  tilePillText: { fontSize: 10, fontWeight: "700", color: colors.accent },
-  tilePillTextGeneric: { color: colors.teal },
-  tileTitle: { fontSize: 14, fontWeight: "700", color: colors.text, marginBottom: 4 },
-  tileBody: { fontSize: 12.5, color: colors.muted, lineHeight: 18, fontFamily: fonts.serif, flex: 1 },
-  tileDate: { fontSize: 11, color: colors.muted, marginTop: 8 },
-  empty: { color: colors.muted, fontSize: 15, fontFamily: fonts.serif, paddingVertical: 20 },
-  actions: { marginTop: 32, gap: 12 },
-  primaryAction: { backgroundColor: colors.accent, borderRadius: 14, padding: 16, alignItems: "center" },
-  primaryActionText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  secondaryAction: {
-    borderColor: colors.accent,
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-    alignItems: "center",
-  },
-  secondaryActionText: { color: colors.accent, fontWeight: "700", fontSize: 16 },
-});
+const createStyles = (colors: ThemeColors, screenWidth: number) => {
+  // Determine a responsive tile width based on available screen width.
+  // Keep gaps/padding in mind: content padding is 20 on each side and
+  // carousel gap is ~14 between tiles. We'll compute columns dynamically.
+  const contentPadding = 40; // left+right padding from container
+  const gap = 14; // gap between tiles in carousel
+  let columns = 1;
+  if (screenWidth >= 1100) columns = 4;
+  else if (screenWidth >= 800) columns = 3;
+  else if (screenWidth >= 480) columns = 2;
+
+  const tileWidth = Math.floor((screenWidth - contentPadding - (columns - 1) * gap) / columns);
+
+  return StyleSheet.create({
+    container: { flex: 1, backgroundColor: colors.bg },
+    content: { padding: 20, paddingBottom: 36 },
+    topBar: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      marginBottom: 18,
+      gap: 16,
+    },
+    greeting: { fontSize: 30, fontWeight: "800", color: colors.text, lineHeight: 36 },
+    sub: { fontSize: 15, color: colors.muted, marginTop: 6, lineHeight: 22, maxWidth: 260 },
+    modeButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      borderRadius: 18,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.surfaceMuted,
+    },
+    modeButtonText: { color: colors.text, fontWeight: "700", fontSize: 13 },
+    hero: {
+      backgroundColor: colors.surface,
+      borderRadius: 24,
+      padding: 22,
+      marginBottom: 24,
+      borderColor: colors.border,
+      borderWidth: 1,
+      shadowColor: colors.text,
+      shadowOpacity: 0.08,
+      shadowOffset: { width: 0, height: 15 },
+      shadowRadius: 25,
+      elevation: 6,
+    },
+    heroBadge: {
+      width: 44,
+      height: 44,
+      borderRadius: 16,
+      backgroundColor: colors.tealSoft,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 0,
+    },
+    heroBadgeText: { fontSize: 22 },
+    heroTitle: { fontSize: 26, fontWeight: "800", color: colors.text, lineHeight: 34 },
+    heroSubtitle: { fontSize: 15, color: colors.muted, marginTop: 10, lineHeight: 22 },
+    sectionHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginBottom: 14,
+    },
+    sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
+    seeAll: { fontSize: 14, color: colors.accent, fontWeight: "700" },
+    carousel: { gap: 14, paddingRight: 8, paddingBottom: 4 },
+    tile: {
+      width: tileWidth,
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 16,
+      minHeight: 144,
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.text,
+      shadowOpacity: 0.06,
+      shadowOffset: { width: 0, height: 3 },
+      shadowRadius: 3,
+      elevation: 4,
+    },
+    tilePill: {
+      alignSelf: "flex-start",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 10,
+      backgroundColor: colors.accentSoft,
+      marginBottom: 8,
+    },
+    tilePillGeneric: { backgroundColor: colors.tealSoft },
+    tilePillText: { fontSize: 10, fontWeight: "700", color: colors.accent },
+    tilePillTextGeneric: { color: colors.teal },
+    tileTitle: { fontSize: 15, fontWeight: "800", color: colors.text, marginBottom: 6 },
+    tileBody: { fontSize: 13, color: colors.muted, lineHeight: 20, fontFamily: fonts.serif, flex: 1 },
+    tileDate: { fontSize: 12, color: colors.muted, marginTop: 12 },
+    empty: { color: colors.muted, fontSize: 15, fontFamily: fonts.serif, paddingVertical: 20, textAlign: "center" },
+    actions: { marginTop: 32, gap: 12 },
+    primaryAction: {
+      backgroundColor: colors.accent,
+      borderRadius: 16,
+      paddingVertical: 16,
+      alignItems: "center",
+      shadowColor: colors.accent,
+      shadowOpacity: 0.18,
+      shadowOffset: { width: 0, height: 12 },
+      shadowRadius: 20,
+      elevation: 4,
+    },
+    primaryActionText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+    secondaryAction: {
+      borderColor: colors.accent,
+      borderWidth: 1,
+      borderRadius: 16,
+      paddingVertical: 16,
+      alignItems: "center",
+    },
+    secondaryActionText: { color: colors.accent, fontWeight: "700", fontSize: 16 },
+    footerCard: {
+      marginTop: 30,
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      padding: 18,
+      borderWidth: 1,
+      borderColor: colors.surfaceMuted,
+      shadowColor: colors.text,
+      shadowOpacity: 0.06,
+      shadowOffset: { width: 0, height: 12 },
+      shadowRadius: 18,
+      elevation: 4,
+    },
+    footerTitle: { fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 12 },
+    footerButtons: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
+    footerButton: {
+      flex: 1,
+      minWidth: 100,
+      paddingVertical: 12,
+      borderRadius: 14,
+      backgroundColor: colors.surfaceSoft,
+      alignItems: "center",
+    },
+    footerButtonText: { color: colors.accent, fontWeight: "700" },
+  })};

@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { Source } from "../lib/api";
-import { colors, fonts } from "../theme";
+import { useTheme } from "../app/theme-context";
+import { fonts } from "../theme";
 import SourceCard from "./SourceCard";
 
 export type Message = {
@@ -16,6 +18,8 @@ export default function ChatMessage({
   message: Message;
   onSourcePress?: (source: Source) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
   const isUser = message.role === "user";
   return (
     <View style={[styles.wrap, isUser ? styles.userWrap : styles.assistantWrap]}>
@@ -38,21 +42,39 @@ export default function ChatMessage({
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { marginVertical: 6, maxWidth: "92%" },
-  userWrap: { alignSelf: "flex-end" },
+function createStyles(colors: typeof import("../theme").colors) {
+  return StyleSheet.create({
+    wrap: { marginVertical: 6, maxWidth: "92%" },
+    userWrap: { alignSelf: "flex-end" },
   assistantWrap: { alignSelf: "flex-start" },
-  bubble: { borderRadius: 14, paddingVertical: 10, paddingHorizontal: 14 },
+  bubble: {
+    borderRadius: 22,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: colors.text,
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 20,
+    elevation: 3,
+  },
   userBubble: { backgroundColor: colors.accent },
   assistantBubble: {
-    backgroundColor: colors.tealSoft,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderLeftWidth: 4,
+    borderColor: colors.surfaceMuted,
+    borderLeftWidth: 5,
     borderLeftColor: colors.teal,
   },
-  text: { color: colors.text, fontSize: 16, lineHeight: 23, fontFamily: fonts.serif },
+  text: { color: colors.text, fontSize: 16, lineHeight: 24, fontFamily: fonts.serif },
   userText: { color: "#fff", fontFamily: fonts.sans },
-  sources: { marginTop: 4 },
-  sourcesLabel: { color: colors.teal, fontSize: 12, marginTop: 8, marginBottom: 2, textTransform: "uppercase", letterSpacing: 0.5 },
-});
+  sources: { marginTop: 10 },
+  sourcesLabel: {
+    color: colors.teal,
+    fontSize: 12,
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    fontWeight: "700",
+  },
+  });
+}

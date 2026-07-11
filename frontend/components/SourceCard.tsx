@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { Source } from "../lib/api";
-import { colors, fonts } from "../theme";
+import { useTheme } from "../app/theme-context";
+import { fonts } from "../theme";
 
 export default function SourceCard({
   source,
@@ -9,6 +11,9 @@ export default function SourceCard({
   source: Source;
   onPress?: () => void;
 }) {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+
   return (
     <TouchableOpacity
       style={styles.card}
@@ -29,17 +34,24 @@ export default function SourceCard({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+function createStyles(colors: typeof import("../theme").colors) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 14,
+    marginTop: 10,
     borderWidth: 1,
-    borderRadius: 10,
-    padding: 10,
-    marginTop: 6,
+    borderColor: colors.surfaceMuted,
+    shadowColor: colors.text,
+    shadowOpacity: 0.06,
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 18,
+    elevation: 4,
   },
-  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
-  title: { fontWeight: "600", color: colors.text, flex: 1, marginRight: 8 },
+  header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
+  title: { fontWeight: "700", color: colors.text, flex: 1, marginRight: 8, fontSize: 15 },
   date: { color: colors.muted, fontSize: 12 },
-  snippet: { color: colors.muted, fontFamily: fonts.serif, fontSize: 13, lineHeight: 19 },
-});
+  snippet: { color: colors.muted, fontFamily: fonts.serif, fontSize: 14, lineHeight: 21 },
+  });
+}
