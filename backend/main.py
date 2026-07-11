@@ -27,10 +27,11 @@ from embedder import embed_many
 
 app = FastAPI(title="WisdomBase API")
 
-# Mobile app talks to this over HTTPS; allow all origins for the MVP.
+# Native mobile clients don't send an Origin header; the web build does. Origins
+# are open in development and restricted to config.CORS_ORIGINS in production.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=config.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -86,7 +87,9 @@ class MemoryRefreshRequest(BaseModel):
 
 @app.get("/")
 def root():
-    return {"status": "ok", "service": "wisdombase"}
+    # `env` lets you confirm which environment a running instance is (handy when
+    # you have both a local dev server and the Railway prod deploy).
+    return {"status": "ok", "service": "wisdombase", "env": config.APP_ENV}
 
 
 def _store_entry(

@@ -1,3 +1,9 @@
+// Which environment this build is running as ("development" or "production"),
+// selected via the .env.development / .env.production files Expo loads by mode.
+// Useful for env-specific behaviour or an on-screen dev badge.
+export const APP_ENV = process.env.EXPO_PUBLIC_APP_ENV ?? "development";
+export const IS_DEV = APP_ENV !== "production";
+
 // Wisdom groups — the top-level bucket an entry belongs to. `Generic` is used
 // for the seeded cold-start entries; the rest are user-facing categories.
 export const GROUPS = ["Personal", "Work", "Generic", "Ideas", "Learning"] as const;
