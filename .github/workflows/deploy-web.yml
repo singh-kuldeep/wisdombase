@@ -19,7 +19,7 @@ jobs:
 
       - name: Deploy backend to Vercel
         working-directory: ./backend
-        run: vercel --prod --confirm
+        run: vercel --prod --yes
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
