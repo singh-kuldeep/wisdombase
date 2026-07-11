@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -30,6 +32,7 @@ export default function Settings() {
   const [memory, setMemory] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showFinalDeleteModal, setShowFinalDeleteModal] = useState(false);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -217,63 +220,10 @@ export default function Settings() {
       </Text>
       <TouchableOpacity
         style={[styles.deleteAccountBtn, deleting && styles.disabled]}
-        onPress={async () => {
+        onPress={() => {
+          console.log("Delete account pressed", deleting);
           if (deleting) return;
-
-          Alert.alert(
-            "Delete Account",
-            "Are you absolutely sure? This will permanently delete:\n\n• All your entries and notes\n• Knowledge chunks and embeddings\n• Memory profile\n• Account settings\n\nThis action CANNOT be undone.\n\nA confirmation email will be sent to your email address.",
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Delete My Account",
-                style: "destructive",
-                onPress: async () => {
-                  // Double confirmation
-                  Alert.alert(
-                    "Final Confirmation",
-                    "This is your last chance. Are you 100% sure you want to delete your account and all data forever?",
-                    [
-                      { text: "Cancel", style: "cancel" },
-                      {
-                        text: "Yes, Delete Everything",
-                        style: "destructive",
-                        onPress: async () => {
-                          setDeleting(true);
-                          try {
-                            const result = await deleteAccount();
-
-                            // Sign out clears the local session and triggers
-                            // the onAuthStateChange listener to redirect automatically.
-                            await signOut();
-
-                            // Redirect to sign-in immediately
-                            router.replace("/(auth)/sign-in");
-
-                            // Show success message after redirect
-                            setTimeout(() => {
-                              Alert.alert(
-                                "Account Deleted",
-                                result.email_sent
-                                  ? "Your account will be deleted and you will receive a confirmation email. All your data has been permanently removed."
-                                  : "Your account will be deleted. All your data has been permanently removed."
-                              );
-                            }, 500);
-                          } catch (e) {
-                            setDeleting(false);
-                            Alert.alert(
-                              "Deletion Failed",
-                              (e as Error).message || "Could not delete account. Please try again or contact support."
-                            );
-                          }
-                        },
-                      },
-                    ]
-                  );
-                },
-              },
-            ]
-          );
+          setShowFinalDeleteModal(true);
         }}
         disabled={deleting}
       >
@@ -283,6 +233,56 @@ export default function Settings() {
           <Text style={styles.deleteAccountText}>Delete My Account</Text>
         )}
       </TouchableOpacity>
+
+
+      <Modal visible={showFinalDeleteModal} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Final Confirmation</Text>
+            <Text style={styles.modalMessage}>
+              This is your last chance. Are you 100% sure you want to delete your account and all data forever?
+            </Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalCancelButton]}
+                onPress={() => setShowFinalDeleteModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalDestructiveButton]}
+                onPress={async () => {
+                  setShowFinalDeleteModal(false);
+                  setDeleting(true);
+                  try {
+                    const result = await deleteAccount();
+
+                    await signOut();
+                    router.replace("/(auth)/sign-in");
+
+                    setTimeout(() => {
+                      Alert.alert(
+                        "Account Deleted",
+                        result.email_sent
+                          ? "Your account will be deleted and you will receive a confirmation email. All your data has been permanently removed."
+                          : "Your account will be deleted. All your data has been permanently removed."
+                      );
+                    }, 500);
+                  } catch (e) {
+                    setDeleting(false);
+                    Alert.alert(
+                      "Deletion Failed",
+                      (e as Error).message || "Could not delete account. Please try again or contact support."
+                    );
+                  }
+                }}
+              >
+                <Text style={styles.modalButtonText}>Yes, Delete Everything</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Text style={styles.version}>WisdomBase v1.0.0</Text>
     </ScrollView>
@@ -364,6 +364,43 @@ function createStyles(colors: typeof import("../../theme").colors) {
     marginTop: 8,
   },
   deleteAccountText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 500,
+    backgroundColor: colors.surface,
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: colors.text,
+    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 14 },
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  modalTitle: { fontSize: 18, fontWeight: "800", color: colors.text, marginBottom: 14 },
+  modalMessage: { fontSize: 15, color: colors.text, lineHeight: 24, marginBottom: 24 },
+  modalActions: { flexDirection: "row", justifyContent: "flex-end", gap: 12 },
+  modalButton: {
+    minWidth: 110,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  modalButtonText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  modalCancelButton: {
+    backgroundColor: colors.surfaceMuted,
+  },
+  modalCancelText: { color: colors.text, fontWeight: "700", fontSize: 14 },
+  modalDestructiveButton: {
+    backgroundColor: colors.danger,
+  },
   version: { textAlign: "center", color: colors.muted, marginTop: 22, marginBottom: 40, fontFamily: fonts.serif },
   });
 }
