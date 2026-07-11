@@ -158,15 +158,12 @@ EXPO_PUBLIC_API_URL=http://192.168.1.20:8000   # use your LAN IP, not localhost
 
 ## Production Deployment
 
-### Backend — Railway (recommended)
+### Backend — Vercel (recommended)
 
 1. Push the `backend/` folder to a GitHub repo (or use a monorepo).
-2. Create a new project on [Railway](https://railway.app) and connect your repo.
-3. Set the **start command** to:
-   ```
-   uvicorn main:app --host 0.0.0.0 --port $PORT
-   ```
-4. Add the following environment variables in Railway's dashboard:
+2. Create a new Vercel project for the backend and connect your repo.
+3. Add a Vercel project secret named `VERCEL_PROJECT_ID_BACKEND` for the backend project.
+4. Set the backend project env vars in Vercel:
 
 | Variable | Value |
 |---|---|
@@ -177,7 +174,12 @@ EXPO_PUBLIC_API_URL=http://192.168.1.20:8000   # use your LAN IP, not localhost
 | `SENDGRID_API_KEY` | SendGrid key (for emails) |
 | `FROM_EMAIL` | `noreply@yourdomain.com` |
 
-5. Deploy. Railway will give you a public URL like `https://your-app.up.railway.app`.
+5. Configure the frontend to point at your Vercel backend URL, for example:
+   ```env
+   EXPO_PUBLIC_API_URL=https://your-backend.vercel.app
+   ```
+
+6. Deploy the backend with the GitHub Actions workflow or using the Vercel CLI.
 
 ### Backend — any platform (Render, Fly.io, VPS)
 
