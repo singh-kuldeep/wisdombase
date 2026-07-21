@@ -2,7 +2,12 @@
 import { Platform } from "react-native";
 import { supabase } from "./supabase";
 
-const BASE = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
+const BASE = (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/+$/, "");
+
+function buildUrl(path: string): string {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${BASE}${normalizedPath}`;
+}
 
 export type Source = {
   entry_id: string;
@@ -28,7 +33,7 @@ async function authHeader(): Promise<Record<string, string>> {
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(buildUrl(path), {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -130,7 +135,7 @@ export async function ingestFiles(input: {
   if (input.tags?.length) form.append("tags", input.tags.join(","));
 
   // Note: do NOT set Content-Type — the runtime adds the multipart boundary.
-  const res = await fetch(`${BASE}/ingest-files`, {
+  const res = await fetch(buildUrl("/ingest-files"), {
     method: "POST",
     headers: { ...(await authHeader()) },
     body: form,
