@@ -65,8 +65,12 @@ function fileIcon(name: string): string {
 function appendVoiceText(previous: string, next: string): string {
   const cleaned = next.trim();
   if (!cleaned) return previous;
+
   const trimmedPrevious = previous.trim();
-  return trimmedPrevious ? `${trimmedPrevious}\n${cleaned}` : cleaned;
+  if (!trimmedPrevious) return cleaned;
+
+  const needsSeparator = trimmedPrevious && !/[\s]$/.test(trimmedPrevious);
+  return needsSeparator ? `${trimmedPrevious} ${cleaned}` : `${trimmedPrevious}${cleaned}`;
 }
 
 export default function Capture() {
@@ -79,7 +83,7 @@ export default function Capture() {
   const [busy, setBusy] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [voiceDraft, setVoiceDraft] = useState("");
-  const [voiceCandidate, setVoiceCandidate] = useState<string | null>(null);
+  const [voiceTranscript, setVoiceTranscript] = useState("");
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const reloadEntries = useEntries((s) => s.load);
 
@@ -95,13 +99,6 @@ export default function Capture() {
 
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
-
-  const finalizeVoiceCandidate = (text?: string) => {
-    const nextText = (text ?? voiceDraft).trim();
-    if (!nextText) return;
-    setVoiceCandidate(nextText);
-    setVoiceDraft("");
-  };
 
   useEffect(() => {
     if (!isListening) {
@@ -123,17 +120,21 @@ export default function Capture() {
 
   useSpeechRecognitionEvent("start", () => setIsListening(true));
   useSpeechRecognitionEvent("end", () => {
-    finalizeVoiceSession();
+    setIsListening(false);
   });
   useSpeechRecognitionEvent("result", (event: any) => {
     const transcript = event?.results?.[0]?.transcript?.trim();
     if (!transcript) return;
 
     if (event?.isFinal) {
-      setVoiceDraft((prev) => {
-        const next = prev ? `${prev} ${transcript}` : transcript;
-        return next.trim();
+      setVoiceTranscript((prev) => {
+        const normalizedPrev = prev?.trim() || "";
+        const normalizedTranscript = transcript.trim();
+        if (!normalizedPrev) return normalizedTranscript;
+        if (normalizedPrev.endsWith(normalizedTranscript)) return normalizedPrev;
+        return `${normalizedPrev} ${normalizedTranscript}`.trim();
       });
+      setVoiceDraft("");
     } else {
       setVoiceDraft(transcript);
     }
@@ -141,7 +142,7 @@ export default function Capture() {
   useSpeechRecognitionEvent("error", (event: any) => {
     setIsListening(false);
     setVoiceDraft("");
-    setVoiceCandidate(null);
+    setVoiceTranscript("");
     const message = event?.message || "Voice input could not be completed.";
     Alert.alert("Voice input unavailable", message);
   });
@@ -175,8 +176,8 @@ export default function Capture() {
       return;
     }
 
-    setVoiceCandidate(null);
     setVoiceDraft("");
+    setVoiceTranscript("");
     ExpoSpeechRecognitionModule.start({
       lang: "en-US",
       interimResults: true,
@@ -190,29 +191,31 @@ export default function Capture() {
     }
   };
 
-  const finalizeVoiceSession = () => {
-    if (voiceDraft.trim()) {
-      setVoiceCandidate(voiceDraft.trim());
-      setVoiceDraft("");
-    } else if (voiceCandidate) {
-      setVoiceCandidate(voiceCandidate);
-    }
-    setIsListening(false);
-  };
-
   const acceptVoiceCandidate = () => {
-    const textToInsert = (voiceCandidate ?? voiceDraft).trim();
-    if (!textToInsert) return;
+    const textToInsert = (voiceTranscript || voiceDraft).trim();
+    if (!textToInsert) {
+      setVoiceDraft("");
+      setVoiceTranscript("");
+      setIsListening(false);
+      return;
+    }
+
     setContent((prev) => appendVoiceText(prev, textToInsert));
-    setVoiceCandidate(null);
     setVoiceDraft("");
+    setVoiceTranscript("");
     setIsListening(false);
+    if (isListening) {
+      ExpoSpeechRecognitionModule.stop();
+    }
   };
 
   const discardVoiceCandidate = () => {
-    setVoiceCandidate(null);
     setVoiceDraft("");
+    setVoiceTranscript("");
     setIsListening(false);
+    if (isListening) {
+      ExpoSpeechRecognitionModule.stop();
+    }
   };
 
   const submit = async () => {
@@ -309,38 +312,39 @@ export default function Capture() {
           <View style={styles.divider} />
           <View style={styles.voiceRow}>
             <Animated.View style={{ transform: [{ scale: isListening ? pulseAnim : 1 }] }}>
-              <TouchableOpacity
-                style={[styles.voiceButton, isListening && styles.voiceButtonActive]}
-                onPress={isListening ? stopVoiceInput : startVoiceInput}
-                disabled={busy}
-              >
-                <Text style={[styles.voiceButtonText, isListening && styles.voiceButtonTextActive]}>
-                  {isListening ? "■ Stop" : "🎤 Dictate"}
-                </Text>
-              </TouchableOpacity>
+              {isListening ? (
+                <View style={styles.voiceActions}>
+                  <TouchableOpacity style={styles.voiceActionButtonAccept} onPress={acceptVoiceCandidate}>
+                    <Text style={styles.voiceActionIcon}>✓</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.voiceActionButtonDecline} onPress={discardVoiceCandidate}>
+                    <Text style={styles.voiceActionIcon}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.voiceButton, isListening && styles.voiceButtonActive]}
+                  onPress={startVoiceInput}
+                  disabled={busy}
+                >
+                  <Text style={[styles.voiceButtonText, isListening && styles.voiceButtonTextActive]}>
+                    🎤 Dictate
+                  </Text>
+                </TouchableOpacity>
+              )}
             </Animated.View>
-            <Text style={[styles.voiceHint, isListening && styles.voiceHintActive]}>
-              {isListening
-                ? voiceDraft || "Listening for speech…"
-                : voiceCandidate
-                  ? "Transcript ready"
-                  : "Tap to start dictation"}
-            </Text>
-          </View>
-          {voiceCandidate ? (
-            <View style={styles.voicePreviewCard}>
-              <Text style={styles.voicePreviewLabel}>Transcript ready</Text>
-              <Text style={styles.voicePreviewText}>{voiceCandidate}</Text>
-              <View style={styles.voicePreviewActions}>
-                <TouchableOpacity style={styles.voicePreviewAccept} onPress={acceptVoiceCandidate}>
-                  <Text style={styles.voicePreviewAcceptText}>Accept</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.voicePreviewDecline} onPress={discardVoiceCandidate}>
-                  <Text style={styles.voicePreviewDeclineText}>Decline</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.voiceStatusWrap}>
+              {isListening ? (
+                <View style={styles.voiceListeningBadge}>
+                  <View style={styles.voiceListeningDot} />
+                  <Text style={styles.voiceListeningText}>Listening…</Text>
+                </View>
+              ) : null}
+              <Text style={[styles.voiceHint, isListening && styles.voiceHintActive]}>
+                {isListening ? voiceDraft || voiceTranscript || "Speak naturally" : "Tap to start dictation"}
+              </Text>
             </View>
-          ) : null}
+          </View>
           <TextInput
             style={styles.body}
             placeholder="Write or paste a thought…"
@@ -496,66 +500,65 @@ function createStyles(colors: typeof import("../../theme").colors) {
   voiceButtonTextActive: {
     color: "#fff",
   },
-  voiceHint: {
+  voiceStatusWrap: {
     flex: 1,
+  },
+  voiceActions: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  voiceActionButtonAccept: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.accent,
+  },
+  voiceActionButtonDecline: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.surfaceMuted,
+    backgroundColor: colors.surface,
+  },
+  voiceActionIcon: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  voiceListeningBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: colors.accentSoft,
+    marginBottom: 6,
+  },
+  voiceListeningDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accent,
+    marginRight: 6,
+  },
+  voiceListeningText: {
+    color: colors.accent,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  voiceHint: {
     color: colors.muted,
     fontSize: 13,
   },
   voiceHintActive: {
     color: colors.accent,
     fontWeight: "600",
-  },
-  voicePreviewCard: {
-    marginTop: 8,
-    marginBottom: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.surfaceMuted,
-    backgroundColor: colors.bg,
-    padding: 12,
-  },
-  voicePreviewLabel: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  voicePreviewText: {
-    color: colors.text,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  voicePreviewActions: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 12,
-  },
-  voicePreviewAccept: {
-    flex: 1,
-    alignItems: "center",
-    borderRadius: 999,
-    backgroundColor: colors.accent,
-    paddingVertical: 10,
-  },
-  voicePreviewAcceptText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  voicePreviewDecline: {
-    flex: 1,
-    alignItems: "center",
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.surfaceMuted,
-    paddingVertical: 10,
-  },
-  voicePreviewDeclineText: {
-    color: colors.text,
-    fontWeight: "700",
-    fontSize: 13,
   },
   body: {
     minHeight: 160,
