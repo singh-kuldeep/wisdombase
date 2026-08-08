@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -12,6 +13,10 @@ import {
   View,
 } from "react-native";
 import * as DocumentPicker from "expo-document-picker";
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+} from "expo-speech-recognition";
 import { ingest, ingestFiles, ingestUrls, type PickedFile } from "../../lib/api";
 import { GROUPS, DEFAULT_GROUP, parseTags } from "../../lib/constants";
 import { useEntries } from "../../stores/entryStore";
@@ -57,6 +62,13 @@ function fileIcon(name: string): string {
   return "📄";
 }
 
+function appendVoiceText(previous: string, next: string): string {
+  const cleaned = next.trim();
+  if (!cleaned) return previous;
+  const trimmedPrevious = previous.trim();
+  return trimmedPrevious ? `${trimmedPrevious}\n${cleaned}` : cleaned;
+}
+
 export default function Capture() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -65,6 +77,10 @@ export default function Capture() {
   const [linksInput, setLinksInput] = useState("");
   const [attachments, setAttachments] = useState<PickedFile[]>([]);
   const [busy, setBusy] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceDraft, setVoiceDraft] = useState("");
+  const [voiceCandidate, setVoiceCandidate] = useState<string | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const reloadEntries = useEntries((s) => s.load);
 
   const links = parseUrls(linksInput);
@@ -79,6 +95,56 @@ export default function Capture() {
 
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
+
+  const finalizeVoiceCandidate = (text?: string) => {
+    const nextText = (text ?? voiceDraft).trim();
+    if (!nextText) return;
+    setVoiceCandidate(nextText);
+    setVoiceDraft("");
+  };
+
+  useEffect(() => {
+    if (!isListening) {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+      return;
+    }
+
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.05, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.95, duration: 600, useNativeDriver: true }),
+      ]),
+    );
+
+    animation.start();
+    return () => animation.stop();
+  }, [isListening, pulseAnim]);
+
+  useSpeechRecognitionEvent("start", () => setIsListening(true));
+  useSpeechRecognitionEvent("end", () => {
+    finalizeVoiceSession();
+  });
+  useSpeechRecognitionEvent("result", (event: any) => {
+    const transcript = event?.results?.[0]?.transcript?.trim();
+    if (!transcript) return;
+
+    if (event?.isFinal) {
+      setVoiceDraft((prev) => {
+        const next = prev ? `${prev} ${transcript}` : transcript;
+        return next.trim();
+      });
+    } else {
+      setVoiceDraft(transcript);
+    }
+  });
+  useSpeechRecognitionEvent("error", (event: any) => {
+    setIsListening(false);
+    setVoiceDraft("");
+    setVoiceCandidate(null);
+    const message = event?.message || "Voice input could not be completed.";
+    Alert.alert("Voice input unavailable", message);
+  });
 
   const pickFiles = async () => {
     const result = await DocumentPicker.getDocumentAsync({
@@ -96,6 +162,58 @@ export default function Capture() {
 
   const removeAttachment = (uri: string) =>
     setAttachments((prev) => prev.filter((p) => p.uri !== uri));
+
+  const startVoiceInput = async () => {
+    if (busy || isListening) return;
+
+    const permissionResult = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert(
+        "Microphone access needed",
+        "Please allow microphone access so you can dictate into your note.",
+      );
+      return;
+    }
+
+    setVoiceCandidate(null);
+    setVoiceDraft("");
+    ExpoSpeechRecognitionModule.start({
+      lang: "en-US",
+      interimResults: true,
+      continuous: true,
+    });
+  };
+
+  const stopVoiceInput = () => {
+    if (isListening) {
+      ExpoSpeechRecognitionModule.stop();
+    }
+  };
+
+  const finalizeVoiceSession = () => {
+    if (voiceDraft.trim()) {
+      setVoiceCandidate(voiceDraft.trim());
+      setVoiceDraft("");
+    } else if (voiceCandidate) {
+      setVoiceCandidate(voiceCandidate);
+    }
+    setIsListening(false);
+  };
+
+  const acceptVoiceCandidate = () => {
+    const textToInsert = (voiceCandidate ?? voiceDraft).trim();
+    if (!textToInsert) return;
+    setContent((prev) => appendVoiceText(prev, textToInsert));
+    setVoiceCandidate(null);
+    setVoiceDraft("");
+    setIsListening(false);
+  };
+
+  const discardVoiceCandidate = () => {
+    setVoiceCandidate(null);
+    setVoiceDraft("");
+    setIsListening(false);
+  };
 
   const submit = async () => {
     if (!canSubmit || busy) return;
@@ -189,6 +307,40 @@ export default function Capture() {
             onChangeText={setTitle}
           />
           <View style={styles.divider} />
+          <View style={styles.voiceRow}>
+            <Animated.View style={{ transform: [{ scale: isListening ? pulseAnim : 1 }] }}>
+              <TouchableOpacity
+                style={[styles.voiceButton, isListening && styles.voiceButtonActive]}
+                onPress={isListening ? stopVoiceInput : startVoiceInput}
+                disabled={busy}
+              >
+                <Text style={[styles.voiceButtonText, isListening && styles.voiceButtonTextActive]}>
+                  {isListening ? "■ Stop" : "🎤 Dictate"}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+            <Text style={[styles.voiceHint, isListening && styles.voiceHintActive]}>
+              {isListening
+                ? voiceDraft || "Listening for speech…"
+                : voiceCandidate
+                  ? "Transcript ready"
+                  : "Tap to start dictation"}
+            </Text>
+          </View>
+          {voiceCandidate ? (
+            <View style={styles.voicePreviewCard}>
+              <Text style={styles.voicePreviewLabel}>Transcript ready</Text>
+              <Text style={styles.voicePreviewText}>{voiceCandidate}</Text>
+              <View style={styles.voicePreviewActions}>
+                <TouchableOpacity style={styles.voicePreviewAccept} onPress={acceptVoiceCandidate}>
+                  <Text style={styles.voicePreviewAcceptText}>Accept</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.voicePreviewDecline} onPress={discardVoiceCandidate}>
+                  <Text style={styles.voicePreviewDeclineText}>Decline</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : null}
           <TextInput
             style={styles.body}
             placeholder="Write or paste a thought…"
@@ -318,6 +470,93 @@ function createStyles(colors: typeof import("../../theme").colors) {
   },
   title: { fontSize: 20, fontWeight: "700", color: colors.text, paddingVertical: 18 },
   divider: { height: 1, backgroundColor: colors.surfaceMuted },
+  voiceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  voiceButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    backgroundColor: colors.accentSoft,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  voiceButtonActive: {
+    backgroundColor: colors.accent,
+  },
+  voiceButtonText: {
+    color: colors.accent,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  voiceButtonTextActive: {
+    color: "#fff",
+  },
+  voiceHint: {
+    flex: 1,
+    color: colors.muted,
+    fontSize: 13,
+  },
+  voiceHintActive: {
+    color: colors.accent,
+    fontWeight: "600",
+  },
+  voicePreviewCard: {
+    marginTop: 8,
+    marginBottom: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.surfaceMuted,
+    backgroundColor: colors.bg,
+    padding: 12,
+  },
+  voicePreviewLabel: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  voicePreviewText: {
+    color: colors.text,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  voicePreviewActions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+  },
+  voicePreviewAccept: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 999,
+    backgroundColor: colors.accent,
+    paddingVertical: 10,
+  },
+  voicePreviewAcceptText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 13,
+  },
+  voicePreviewDecline: {
+    flex: 1,
+    alignItems: "center",
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.surfaceMuted,
+    paddingVertical: 10,
+  },
+  voicePreviewDeclineText: {
+    color: colors.text,
+    fontWeight: "700",
+    fontSize: 13,
+  },
   body: {
     minHeight: 160,
     fontSize: 17,
