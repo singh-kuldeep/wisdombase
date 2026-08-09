@@ -342,7 +342,7 @@ export default function Capture() {
             onChangeText={setContent}
           />
 
-          {/* Right: mic → check/cancel when listening, send when content ready */}
+          {/* Right: check/cancel while listening, otherwise mic + send */}
           {isListening ? (
             <Animated.View style={[styles.voiceActions, { transform: [{ scale: pulseAnim }] }]}>
               <TouchableOpacity style={styles.voiceActionAccept} onPress={acceptVoiceCandidate}>
@@ -352,25 +352,23 @@ export default function Capture() {
                 <Feather name="x" size={16} color={colors.text} />
               </TouchableOpacity>
             </Animated.View>
-          ) : canSubmit ? (
-            <TouchableOpacity style={styles.sendBtn} onPress={submit} disabled={busy}>
-              {busy ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Feather name="send" size={16} color="#fff" />
-              )}
-            </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.micBtn} onPress={startVoiceInput} disabled={busy}>
-              <Feather name="mic" size={18} color={colors.accent} />
-            </TouchableOpacity>
+            <View style={styles.voiceActions}>
+              <TouchableOpacity style={styles.micBtn} onPress={startVoiceInput} disabled={busy}>
+                <Feather name="mic" size={18} color={colors.accent} />
+              </TouchableOpacity>
+              {canSubmit && (
+                <TouchableOpacity style={styles.sendBtn} onPress={submit} disabled={busy}>
+                  {busy ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Feather name="send" size={16} color="#fff" />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
           )}
         </View>
-
-        {/* Queued summary */}
-        {queued.length > 0 && (
-          <Text style={styles.queued}>{queued.join("  ·  ")}</Text>
-        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -464,6 +462,7 @@ function createStyles(colors: typeof import("../../theme").colors) {
     /* ── Bottom compose area (fills the whole screen) ── */
     composeWrap: {
       flex: 1,
+      justifyContent: "flex-end",
       borderTopWidth: 1,
       borderTopColor: colors.surfaceMuted,
       backgroundColor: colors.surface,
