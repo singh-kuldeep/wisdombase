@@ -87,6 +87,7 @@ export default function Capture() {
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
+  const [inputHeight, setInputHeight] = useState(40);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const contentSnapshot = useRef("");
   const voiceTranscriptRef = useRef("");
@@ -328,13 +329,15 @@ export default function Capture() {
 
           {/* Text input — shows live dictation in real time */}
           <TextInput
-            style={styles.composeInput}
+            style={[styles.composeInput, { height: Math.max(40, inputHeight) }]}
             placeholder={isListening ? "Listening…" : "Type your wisdom…"}
             placeholderTextColor={isListening ? colors.accent : colors.muted}
             multiline
             scrollEnabled={false}
             value={content}
             onChangeText={setContent}
+            textAlignVertical="top"
+            onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
           />
 
           {/* Right: check/cancel while listening, otherwise mic + send */}
@@ -531,7 +534,7 @@ function createStyles(colors: typeof import("../../theme").colors) {
     /* Compose bar */
     composeBar: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-end",
       gap: 8,
       paddingHorizontal: 12,
       paddingTop: 10,
@@ -556,7 +559,6 @@ function createStyles(colors: typeof import("../../theme").colors) {
       paddingVertical: 10,
       fontSize: 15,
       color: colors.text,
-      maxHeight: 100,
     },
     micBtn: {
       width: 40,
