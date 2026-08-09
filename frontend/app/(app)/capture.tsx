@@ -313,12 +313,7 @@ export default function Capture() {
         )}
 
         {/* Listening indicator */}
-        {isListening && (
-          <View style={styles.voiceStrip}>
-            <View style={styles.voiceListeningDot} />
-            <Text style={styles.voiceStripText}>Listening…</Text>
-          </View>
-        )}
+       
 
         {/* Compose bar */}
         <View style={styles.composeBar}>
@@ -369,7 +364,14 @@ export default function Capture() {
             </View>
           )}
         </View>
+        
       </View>
+       {isListening && (
+          <View style={styles.voiceStrip}>
+            <View style={styles.voiceListeningDot} />
+            <Text style={styles.voiceStripText}>Listening…</Text>
+          </View>
+        )}
     </KeyboardAvoidingView>
   );
 }
@@ -511,12 +513,12 @@ function createStyles(colors: typeof import("../../theme").colors) {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
-      marginHorizontal: 12,
-      marginTop: 10,
+      marginHorizontal: 0,
+      marginTop: 0,
       paddingHorizontal: 12,
       paddingVertical: 8,
       backgroundColor: colors.accentSoft,
-      borderRadius: 10,
+      borderRadius: 0,
     },
     voiceListeningDot: {
       width: 8,
