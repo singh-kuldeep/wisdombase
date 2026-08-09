@@ -23,6 +23,7 @@ import { GROUPS, DEFAULT_GROUP, parseTags } from "../../lib/constants";
 import { useEntries } from "../../stores/entryStore";
 import { useTheme } from "../theme-context";
 import { fonts } from "../../theme";
+import NoteEditorModal from "../../components/NoteEditorModal";
 
 // Files we can extract text from today. The backend decides what it can read;
 // this just hints the OS picker. Add new types here as the backend grows.
@@ -88,6 +89,7 @@ export default function Capture() {
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [inputHeight, setInputHeight] = useState(40);
+  const [showEditor, setShowEditor] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const contentSnapshot = useRef("");
   const voiceTranscriptRef = useRef("");
@@ -262,6 +264,7 @@ export default function Capture() {
   };
 
   return (
+    <>
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -340,6 +343,15 @@ export default function Capture() {
             onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
           />
 
+          {/* Expand to full-screen editor */}
+          <TouchableOpacity
+            style={styles.expandBtn}
+            onPress={() => setShowEditor(true)}
+            disabled={busy || isListening}
+          >
+            <Feather name="maximize-2" size={16} color={colors.muted} />
+          </TouchableOpacity>
+
           {/* Right: check/cancel while listening, otherwise mic + send */}
           {isListening ? (
             <Animated.View style={[styles.voiceActions, { transform: [{ scale: pulseAnim }] }]}>
@@ -376,6 +388,13 @@ export default function Capture() {
           </View>
         )}
     </KeyboardAvoidingView>
+
+      {/* Full-screen note editor */}
+      <NoteEditorModal
+        visible={showEditor}
+        onClose={() => setShowEditor(false)}
+      />
+    </>
   );
 }
 
@@ -559,6 +578,16 @@ function createStyles(colors: typeof import("../../theme").colors) {
       paddingVertical: 10,
       fontSize: 15,
       color: colors.text,
+    },
+    expandBtn: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.surfaceMuted,
     },
     micBtn: {
       width: 40,
