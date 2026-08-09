@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import {
   ExpoSpeechRecognitionModule,
@@ -84,7 +85,11 @@ export default function Capture() {
   const [isListening, setIsListening] = useState(false);
   const [voiceDraft, setVoiceDraft] = useState("");
   const [voiceTranscript, setVoiceTranscript] = useState("");
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showLinkInput, setShowLinkInput] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const contentSnapshot = useRef("");
+  const voiceTranscriptRef = useRef("");
   const reloadEntries = useEntries((s) => s.load);
 
   const links = parseUrls(linksInput);
@@ -119,30 +124,30 @@ export default function Capture() {
   }, [isListening, pulseAnim]);
 
   useSpeechRecognitionEvent("start", () => setIsListening(true));
-  useSpeechRecognitionEvent("end", () => {
-    setIsListening(false);
-  });
+  useSpeechRecognitionEvent("end", () => setIsListening(false));
   useSpeechRecognitionEvent("result", (event: any) => {
     const transcript = event?.results?.[0]?.transcript?.trim();
     if (!transcript) return;
 
     if (event?.isFinal) {
-      setVoiceTranscript((prev) => {
-        const normalizedPrev = prev?.trim() || "";
-        const normalizedTranscript = transcript.trim();
-        if (!normalizedPrev) return normalizedTranscript;
-        if (normalizedPrev.endsWith(normalizedTranscript)) return normalizedPrev;
-        return `${normalizedPrev} ${normalizedTranscript}`.trim();
-      });
+      const prev = voiceTranscriptRef.current?.trim() || "";
+      const next = prev.endsWith(transcript) ? prev : prev ? `${prev} ${transcript}` : transcript;
+      voiceTranscriptRef.current = next;
+      setVoiceTranscript(next);
       setVoiceDraft("");
+      setContent(appendVoiceText(contentSnapshot.current, next));
     } else {
       setVoiceDraft(transcript);
+      const base = appendVoiceText(contentSnapshot.current, voiceTranscriptRef.current);
+      setContent(appendVoiceText(base, transcript));
     }
   });
   useSpeechRecognitionEvent("error", (event: any) => {
+    setContent(contentSnapshot.current);
     setIsListening(false);
     setVoiceDraft("");
     setVoiceTranscript("");
+    voiceTranscriptRef.current = "";
     const message = event?.message || "Voice input could not be completed.";
     Alert.alert("Voice input unavailable", message);
   });
@@ -176,6 +181,8 @@ export default function Capture() {
       return;
     }
 
+    contentSnapshot.current = content;
+    voiceTranscriptRef.current = "";
     setVoiceDraft("");
     setVoiceTranscript("");
     ExpoSpeechRecognitionModule.start({
@@ -192,30 +199,21 @@ export default function Capture() {
   };
 
   const acceptVoiceCandidate = () => {
-    const textToInsert = (voiceTranscript || voiceDraft).trim();
-    if (!textToInsert) {
-      setVoiceDraft("");
-      setVoiceTranscript("");
-      setIsListening(false);
-      return;
-    }
-
-    setContent((prev) => appendVoiceText(prev, textToInsert));
+    // content already has the live transcript — just clean up voice state
     setVoiceDraft("");
     setVoiceTranscript("");
+    voiceTranscriptRef.current = "";
     setIsListening(false);
-    if (isListening) {
-      ExpoSpeechRecognitionModule.stop();
-    }
+    if (isListening) ExpoSpeechRecognitionModule.stop();
   };
 
   const discardVoiceCandidate = () => {
+    setContent(contentSnapshot.current); // roll back to pre-dictation text
     setVoiceDraft("");
     setVoiceTranscript("");
+    voiceTranscriptRef.current = "";
     setIsListening(false);
-    if (isListening) {
-      ExpoSpeechRecognitionModule.stop();
-    }
+    if (isListening) ExpoSpeechRecognitionModule.stop();
   };
 
   const submit = async () => {
@@ -268,152 +266,111 @@ export default function Capture() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={90}
     >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-      >
-        {/* <View style={styles.heroBanner}>
-          <Text style={styles.heroTitle}>Capture ideas, links, and documents in one flowing notebook.</Text>
-          <Text style={styles.heroSubtitle}>Every new thought becomes searchable, ready for later questions and memory building.</Text>
-        </View> */}
+      {/* ── Everything lives in the bottom compose area ── */}
+      <View style={styles.composeWrap}>
+       
 
-        <Text style={styles.label}>Collection</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipRow}
-          keyboardShouldPersistTaps="handled"
-        >
-          {GROUPS.map((g) => {
-            const active = g === group;
-            return (
-              <TouchableOpacity
-                key={g}
-                style={[styles.chip, active && styles.chipActive]}
-                onPress={() => setGroup(g)}
-              >
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{g}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* One generic capture card — write or paste anything. */}
-        <View style={styles.card}>
-          <TextInput
-            style={styles.title}
-            placeholder="Title (optional)"
-            placeholderTextColor={colors.muted}
-            value={title}
-            onChangeText={setTitle}
-          />
-          <View style={styles.divider} />
-          <View style={styles.voiceRow}>
-            <Animated.View style={{ transform: [{ scale: isListening ? pulseAnim : 1 }] }}>
-              {isListening ? (
-                <View style={styles.voiceActions}>
-                  <TouchableOpacity style={styles.voiceActionButtonAccept} onPress={acceptVoiceCandidate}>
-                    <Text style={styles.voiceActionIcon}>✓</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.voiceActionButtonDecline} onPress={discardVoiceCandidate}>
-                    <Text style={styles.voiceActionIcon}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={[styles.voiceButton, isListening && styles.voiceButtonActive]}
-                  onPress={startVoiceInput}
-                  disabled={busy}
-                >
-                  <Text style={[styles.voiceButtonText, isListening && styles.voiceButtonTextActive]}>
-                    🎤 Dictate
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </Animated.View>
-            <View style={styles.voiceStatusWrap}>
-              {isListening ? (
-                <View style={styles.voiceListeningBadge}>
-                  <View style={styles.voiceListeningDot} />
-                  <Text style={styles.voiceListeningText}>Listening…</Text>
-                </View>
-              ) : null}
-              <Text style={[styles.voiceHint, isListening && styles.voiceHintActive]}>
-                {isListening ? voiceDraft || voiceTranscript || "Speak naturally" : "Tap to start dictation"}
-              </Text>
-            </View>
-          </View>
-          <TextInput
-            style={styles.body}
-            placeholder="Write or paste a thought…"
-            placeholderTextColor={colors.muted}
-            multiline
-            textAlignVertical="top"
-            value={content}
-            onChangeText={setContent}
-          />
-          <View style={styles.divider} />
-          <TextInput
-            style={styles.tags}
-            placeholder="Tags, comma separated (optional)"
-            placeholderTextColor={colors.muted}
-            autoCapitalize="none"
-            value={tagsInput}
-            onChangeText={setTagsInput}
-          />
-        </View>
-
-        {/* Unified import — links and files of any supported type. */}
-        <Text style={styles.label}>Add from sources</Text>
-        <Text style={styles.help}>
-          Paste web links or attach files (txt, md, html, pdf). Each becomes its own
-          entry; anything unreadable is skipped.
-        </Text>
-
-        <TextInput
-          style={styles.links}
-          placeholder={"Paste web links, one per line"}
-          placeholderTextColor={colors.muted}
-          multiline
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="url"
-          textAlignVertical="top"
-          value={linksInput}
-          onChangeText={setLinksInput}
-        />
-
-        <TouchableOpacity style={styles.attach} onPress={pickFiles} disabled={busy}>
-          <Text style={styles.attachText}>＋  Attach files</Text>
-        </TouchableOpacity>
-
-        {attachments.map((a) => (
-          <View key={a.uri} style={styles.fileChip}>
-            <Text style={styles.fileChipText} numberOfLines={1}>
-              {fileIcon(a.name)}  {a.name}
-            </Text>
-            <TouchableOpacity onPress={() => removeAttachment(a.uri)} hitSlop={10}>
-              <Text style={styles.fileChipX}>✕</Text>
+        {/* Attach menu popup */}
+        {showAttachMenu && (
+          <View style={styles.attachMenu}>
+            <TouchableOpacity
+              style={styles.attachMenuItem}
+              onPress={() => { setShowAttachMenu(false); pickFiles(); }}
+            >
+              <Feather name="file-text" size={16} color={colors.accent} />
+              <Text style={styles.attachMenuText}>File (txt, pdf, html)</Text>
+            </TouchableOpacity>
+            <View style={styles.attachMenuDivider} />
+            <TouchableOpacity
+              style={styles.attachMenuItem}
+              onPress={() => { setShowAttachMenu(false); setShowLinkInput(true); }}
+            >
+              <Feather name="link" size={16} color={colors.accent} />
+              <Text style={styles.attachMenuText}>Web link</Text>
             </TouchableOpacity>
           </View>
-        ))}
-      </ScrollView>
+        )}
 
-      <View style={styles.footer}>
-        {queued.length > 0 && <Text style={styles.queued}>{queued.join("  ·  ")}</Text>}
-        <TouchableOpacity
-          style={[styles.primary, (!canSubmit || busy) && styles.disabled]}
-          onPress={submit}
-          disabled={!canSubmit || busy}
-        >
-          {busy ? (
-            <ActivityIndicator color="#fff" />
+        {/* Link input row */}
+        {showLinkInput && (
+          <View style={styles.linkInputRow}>
+            <Feather name="link" size={14} color={colors.accent} />
+            <TextInput
+              style={styles.linkInput}
+              placeholder="Paste a URL…"
+              placeholderTextColor={colors.muted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              value={linksInput}
+              onChangeText={setLinksInput}
+              autoFocus
+            />
+            <TouchableOpacity onPress={() => setShowLinkInput(false)} hitSlop={8}>
+              <Feather name="check" size={16} color={colors.accent} />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Listening indicator */}
+        {isListening && (
+          <View style={styles.voiceStrip}>
+            <View style={styles.voiceListeningDot} />
+            <Text style={styles.voiceStripText}>Listening…</Text>
+          </View>
+        )}
+
+        {/* Compose bar */}
+        <View style={styles.composeBar}>
+          {/* Left: always the + button */}
+          <TouchableOpacity
+            style={styles.attachBtn}
+            onPress={() => { setShowAttachMenu((v) => !v); setShowLinkInput(false); }}
+            disabled={busy || isListening}
+          >
+            <Feather name={showAttachMenu ? "x" : "plus"} size={20} color={isListening ? colors.muted : colors.accent} />
+          </TouchableOpacity>
+
+          {/* Text input */}
+          <TextInput
+            style={styles.composeInput}
+            placeholder="Type your wisdom…"
+            placeholderTextColor={colors.muted}
+            multiline
+            value={isListening ? "" : content}
+            onChangeText={isListening ? undefined : setContent}
+            editable={!isListening}
+          />
+
+          {/* Right: mic → check/cancel when listening, send when content ready */}
+          {isListening ? (
+            <Animated.View style={[styles.voiceActions, { transform: [{ scale: pulseAnim }] }]}>
+              <TouchableOpacity style={styles.voiceActionAccept} onPress={acceptVoiceCandidate}>
+                <Feather name="check" size={16} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.voiceActionDecline} onPress={discardVoiceCandidate}>
+                <Feather name="x" size={16} color={colors.text} />
+              </TouchableOpacity>
+            </Animated.View>
+          ) : canSubmit ? (
+            <TouchableOpacity style={styles.sendBtn} onPress={submit} disabled={busy}>
+              {busy ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Feather name="send" size={16} color="#fff" />
+              )}
+            </TouchableOpacity>
           ) : (
-            <Text style={styles.primaryText}>Add to knowledge base</Text>
+            <TouchableOpacity style={styles.micBtn} onPress={startVoiceInput} disabled={busy}>
+              <Feather name="mic" size={18} color={colors.accent} />
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+        </View>
+
+        {/* Queued summary */}
+        {queued.length > 0 && (
+          <Text style={styles.queued}>{queued.join("  ·  ")}</Text>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -422,212 +379,228 @@ export default function Capture() {
 function createStyles(colors: typeof import("../../theme").colors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg },
-    content: { padding: 18, paddingBottom: 24 },
-    heroBanner: {
-    borderRadius: 24,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.surfaceMuted,
-    padding: 22,
-    marginBottom: 18,
-    shadowColor: colors.text,
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 14 },
-    shadowRadius: 24,
-    elevation: 5,
-  },
-  heroTitle: { fontSize: 22, fontWeight: "800", color: colors.text, lineHeight: 30, marginBottom: 8 },
-  heroSubtitle: { color: colors.muted, fontSize: 15, lineHeight: 22 },
-  label: {
-    fontSize: 13,
-    color: colors.muted,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    fontWeight: "700",
-    marginTop: 6,
-    marginBottom: 10,
-  },
-  chipRow: { gap: 10, paddingRight: 8, paddingBottom: 2 },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: colors.surfaceMuted,
-    backgroundColor: colors.surface,
-  },
-  chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  chipText: { color: colors.muted, fontWeight: "700", fontSize: 13 },
-  chipTextActive: { color: "#fff" },
-  card: {
-    marginTop: 16,
-    backgroundColor: colors.surface,
-    borderColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 18,
-    shadowColor: colors.text,
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 12 },
-    shadowRadius: 20,
-    elevation: 4,
-  },
-  title: { fontSize: 20, fontWeight: "700", color: colors.text, paddingVertical: 18 },
-  divider: { height: 1, backgroundColor: colors.surfaceMuted },
-  voiceRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  voiceButton: {
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: colors.accent,
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  voiceButtonActive: {
-    backgroundColor: colors.accent,
-  },
-  voiceButtonText: {
-    color: colors.accent,
-    fontWeight: "700",
-    fontSize: 13,
-  },
-  voiceButtonTextActive: {
-    color: "#fff",
-  },
-  voiceStatusWrap: {
-    flex: 1,
-  },
-  voiceActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  voiceActionButtonAccept: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.accent,
-  },
-  voiceActionButtonDecline: {
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: colors.surfaceMuted,
-    backgroundColor: colors.surface,
-  },
-  voiceActionIcon: {
-    color: colors.text,
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  voiceListeningBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: colors.accentSoft,
-    marginBottom: 6,
-  },
-  voiceListeningDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.accent,
-    marginRight: 6,
-  },
-  voiceListeningText: {
-    color: colors.accent,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  voiceHint: {
-    color: colors.muted,
-    fontSize: 13,
-  },
-  voiceHintActive: {
-    color: colors.accent,
-    fontWeight: "600",
-  },
-  body: {
-    minHeight: 160,
-    fontSize: 17,
-    lineHeight: 25,
-    color: colors.text,
-    fontFamily: fonts.serif,
-    paddingVertical: 16,
-  },
-  tags: { fontSize: 14, color: colors.text, paddingVertical: 14 },
-  help: { color: colors.muted, fontSize: 14, lineHeight: 20, marginBottom: 12 },
-  links: {
-    minHeight: 64,
-    maxHeight: 130,
-    backgroundColor: colors.surface,
-    borderColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
-    fontSize: 14,
-    color: colors.text,
-  },
-  attach: {
-    marginTop: 10,
-    borderColor: colors.accent,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: "center",
-    backgroundColor: colors.accentSoft,
-  },
-  attachText: { color: colors.accent, fontWeight: "700", fontSize: 15 },
-  fileChip: {
-    marginTop: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: colors.surface,
-    borderColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  fileChipText: { flex: 1, color: colors.text, fontSize: 14, marginRight: 10 },
-  fileChipX: { color: colors.muted, fontSize: 15, fontWeight: "700" },
-  footer: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 18,
-    borderTopWidth: 1,
-    borderTopColor: colors.surfaceMuted,
-    backgroundColor: colors.surface,
-  },
-  queued: { textAlign: "center", color: colors.muted, fontSize: 13, marginBottom: 10 },
-  primary: {
-    backgroundColor: colors.accent,
-    borderRadius: 16,
-    padding: 16,
-    alignItems: "center",
-    shadowColor: colors.accent,
-    shadowOpacity: 0.18,
-    shadowOffset: { width: 0, height: 12 },
-    shadowRadius: 20,
-    elevation: 4,
-  },
-  primaryText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  disabled: { opacity: 0.45 },
+
+    /* Scrollable area */
+    scroll: { flex: 1 },
+    scrollContent: { padding: 16, paddingBottom: 12 },
+
+    /* Collection chips */
+    chipRow: { gap: 8, paddingBottom: 14, paddingRight: 8 },
+    chip: {
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.surfaceMuted,
+      backgroundColor: colors.surface,
+    },
+    chipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+    chipText: { color: colors.muted, fontWeight: "700", fontSize: 13 },
+    chipTextActive: { color: "#fff" },
+
+    /* Main card */
+    mainCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.surfaceMuted,
+      paddingHorizontal: 16,
+      marginBottom: 12,
+      shadowColor: colors.text,
+      shadowOpacity: 0.06,
+      shadowOffset: { width: 0, height: 8 },
+      shadowRadius: 16,
+      elevation: 3,
+    },
+    titleInput: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.text,
+      paddingVertical: 14,
+    },
+    divider: { height: 1, backgroundColor: colors.surfaceMuted },
+    bodyInput: {
+      minHeight: 120,
+      fontSize: 16,
+      lineHeight: 24,
+      color: colors.text,
+      fontFamily: fonts.serif,
+      paddingVertical: 14,
+      textAlignVertical: "top",
+    },
+
+    /* Attachment / link chips list */
+    attachList: { gap: 8, marginBottom: 10 },
+    fileChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: colors.surface,
+      borderColor: colors.surfaceMuted,
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    fileChipText: { flex: 1, color: colors.text, fontSize: 13, marginRight: 8 },
+    linkChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.accentSoft,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    linkChipText: { flex: 1, color: colors.accent, fontSize: 13 },
+
+    /* Tags */
+    tagsInput: {
+      fontSize: 14,
+      color: colors.text,
+      paddingVertical: 10,
+      paddingHorizontal: 4,
+    },
+
+    /* ── Bottom compose area (fills the whole screen) ── */
+    composeWrap: {
+      flex: 1,
+      borderTopWidth: 1,
+      borderTopColor: colors.surfaceMuted,
+      backgroundColor: colors.surface,
+      paddingBottom: Platform.OS === "ios" ? 24 : 12,
+    },
+
+
+    /* Attach popup */
+    attachMenu: {
+      marginHorizontal: 12,
+      marginTop: 10,
+      backgroundColor: colors.bg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.surfaceMuted,
+      overflow: "hidden",
+    },
+    attachMenuItem: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingHorizontal: 16,
+      paddingVertical: 13,
+    },
+    attachMenuText: { color: colors.text, fontSize: 14, fontWeight: "600" },
+    attachMenuDivider: { height: 1, backgroundColor: colors.surfaceMuted },
+
+    /* Link input row */
+    linkInputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginHorizontal: 12,
+      marginTop: 10,
+      backgroundColor: colors.bg,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    linkInput: { flex: 1, fontSize: 14, color: colors.text },
+
+    /* Voice strip */
+    voiceStrip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginHorizontal: 12,
+      marginTop: 10,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      backgroundColor: colors.accentSoft,
+      borderRadius: 10,
+    },
+    voiceListeningDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: colors.accent,
+    },
+    voiceStripText: { flex: 1, color: colors.accent, fontSize: 13, fontWeight: "600" },
+
+    /* Compose bar */
+    composeBar: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingTop: 10,
+    },
+    attachBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1.5,
+      borderColor: colors.accent,
+      borderStyle: "dashed",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    composeInput: {
+      flex: 1,
+      backgroundColor: colors.bg,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.surfaceMuted,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+      fontSize: 15,
+      color: colors.text,
+      maxHeight: 100,
+    },
+    micBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.accentSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    sendBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    /* Voice accept/cancel */
+    voiceActions: { flexDirection: "row", gap: 6 },
+    voiceActionAccept: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: colors.accent,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    voiceActionDecline: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.surfaceMuted,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    /* Queued summary */
+    queued: {
+      textAlign: "center",
+      color: colors.muted,
+      fontSize: 12,
+      paddingTop: 6,
+    },
   });
 }

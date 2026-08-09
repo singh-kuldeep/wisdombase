@@ -51,7 +51,7 @@ export default function Home() {
   const { width: screenWidth } = useWindowDimensions();
 
   useEffect(() => {
-    load();
+    //load();
   }, []);
 
   const styles = useMemo(() => createStyles(colors, screenWidth), [colors, screenWidth]);
@@ -59,32 +59,34 @@ export default function Home() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* <View style={styles.topBar}>
-        <View>
-          <Text style={styles.greeting}>Your wisdom</Text>
-          <Text style={styles.sub}>Revisit what you've captured, then ask it anything.</Text>
-        </View>
-      </View> */}
+      {/* Quick-action card */}
+      <View style={styles.quickCard}>
+        {/* Capture bar */}
+        <TouchableOpacity style={styles.quickRow} onPress={() => router.push("/(app)/capture")} activeOpacity={0.75}>
+          <View style={styles.quickAddBtn}>
+            <Feather name="plus" size={18} color={colors.accent} />
+          </View>
+          <Text style={styles.quickPlaceholder}>Type your wisdom…</Text>
+          <View style={styles.quickSendBtn}>
+            <Feather name="arrow-right" size={16} color={colors.accent} />
+          </View>
+        </TouchableOpacity>
 
-      <View style={styles.hero}>
-        
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <View style={styles.heroBadge}>
-          <Text style={styles.heroBadgeText}>
-            <Icon name="star" focused={true} />
-          </Text>
-        </View>
-          <Text style={styles.heroTitle}>Your wisdom</Text>
-        </View>
-       
-        <Text style={styles.heroSubtitle}>
-          Capture your ideas, revisit them as smart cards, and ask questions with context built from your own thinking.
-        </Text>
+        <View style={styles.quickDivider} />
+
+        {/* Ask bar */}
+        <TouchableOpacity style={styles.quickRow} onPress={() => router.push("/(app)/ask")} activeOpacity={0.75}>
+          <Text style={[styles.quickPlaceholder, { flex: 1 }]}>Ask your wisdom…</Text>
+          <View style={styles.quickSendBtn}>
+            <Feather name="arrow-right" size={16} color={colors.accent} />
+          </View>
+        </TouchableOpacity>
       </View>
 
-      <View style={styles.sectionHeader}>
+      {/* Recent captures */}
+      {/* <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Recent captures</Text>
-        <TouchableOpacity onPress={() => router.push("/(app)/browse")}> 
+        <TouchableOpacity onPress={() => router.push("/(app)/browse")}>
           <Text style={styles.seeAll}>See all</Text>
         </TouchableOpacity>
       </View>
@@ -104,16 +106,7 @@ export default function Home() {
         <Text style={styles.empty}>
           {loading ? "Loading your knowledge…" : "Capture your first thought to see it here."}
         </Text>
-      )}
-
-      <View style={styles.actions}>
-        <TouchableOpacity style={styles.primaryAction} onPress={() => router.push("/(app)/capture")}> 
-          <Text style={styles.primaryActionText}>Capture a thought</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondaryAction} onPress={() => router.push("/(app)/ask")}> 
-          <Text style={styles.secondaryActionText}>Ask your thinking</Text>
-        </TouchableOpacity>
-      </View>
+      )} */}
     </ScrollView>
   );
 }
@@ -136,52 +129,57 @@ const createStyles = (colors: ThemeColors, screenWidth: number) => {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg },
     content: { padding: 20, paddingBottom: 36 },
-    topBar: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "flex-start",
-      marginBottom: 18,
-      gap: 16,
+
+    /* Quick-action card */
+    quickCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 22,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 16,
+      paddingVertical: 6,
+      marginBottom: 28,
+      shadowColor: colors.text,
+      shadowOpacity: 0.07,
+      shadowOffset: { width: 0, height: 10 },
+      shadowRadius: 18,
+      elevation: 4,
     },
-    greeting: { fontSize: 30, fontWeight: "800", color: colors.text, lineHeight: 36 },
-    sub: { fontSize: 15, color: colors.muted, marginTop: 6, lineHeight: 22, maxWidth: 260 },
-    modeButton: {
+    quickRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-      borderRadius: 18,
-      backgroundColor: colors.surface,
-      borderWidth: 1,
-      borderColor: colors.surfaceMuted,
+      paddingVertical: 14,
+      gap: 12,
     },
-    modeButtonText: { color: colors.text, fontWeight: "700", fontSize: 13 },
-    hero: {
-      backgroundColor: colors.surface,
-      borderRadius: 24,
-      padding: 22,
-      marginBottom: 24,
-      borderColor: colors.border,
-      borderWidth: 1,
-      shadowColor: colors.text,
-      shadowOpacity: 0.08,
-      shadowOffset: { width: 0, height: 15 },
-      shadowRadius: 25,
-      elevation: 6,
+    quickDivider: {
+      height: 1,
+      backgroundColor: colors.surfaceMuted,
     },
-    heroBadge: {
-      width: 44,
-      height: 44,
-      borderRadius: 16,
-      backgroundColor: colors.tealSoft,
+    quickAddBtn: {
+      width: 34,
+      height: 34,
+      borderRadius: 17,
+      borderWidth: 1.5,
+      borderColor: colors.accent,
+      borderStyle: "dashed",
       alignItems: "center",
       justifyContent: "center",
-      marginBottom: 0,
     },
-    heroBadgeText: { fontSize: 22 },
-    heroTitle: { fontSize: 26, fontWeight: "800", color: colors.text, lineHeight: 34 },
-    heroSubtitle: { fontSize: 15, color: colors.muted, marginTop: 10, lineHeight: 22 },
+    quickPlaceholder: {
+      flex: 1,
+      fontSize: 15,
+      color: colors.muted,
+    },
+    quickSendBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: colors.accentSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+
+    /* Section */
     sectionHeader: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -190,6 +188,8 @@ const createStyles = (colors: ThemeColors, screenWidth: number) => {
     },
     sectionTitle: { fontSize: 18, fontWeight: "700", color: colors.text },
     seeAll: { fontSize: 14, color: colors.accent, fontWeight: "700" },
+
+    /* Carousel */
     carousel: { gap: 14, paddingRight: 8, paddingBottom: 4 },
     tile: {
       width: tileWidth,
@@ -220,49 +220,4 @@ const createStyles = (colors: ThemeColors, screenWidth: number) => {
     tileBody: { fontSize: 13, color: colors.muted, lineHeight: 20, fontFamily: fonts.serif, flex: 1 },
     tileDate: { fontSize: 12, color: colors.muted, marginTop: 12 },
     empty: { color: colors.muted, fontSize: 15, fontFamily: fonts.serif, paddingVertical: 20, textAlign: "center" },
-    actions: { marginTop: 32, gap: 12 },
-    primaryAction: {
-      backgroundColor: colors.accent,
-      borderRadius: 16,
-      paddingVertical: 16,
-      alignItems: "center",
-      shadowColor: colors.accent,
-      shadowOpacity: 0.18,
-      shadowOffset: { width: 0, height: 12 },
-      shadowRadius: 20,
-      elevation: 4,
-    },
-    primaryActionText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-    secondaryAction: {
-      borderColor: colors.accent,
-      borderWidth: 1,
-      borderRadius: 16,
-      paddingVertical: 16,
-      alignItems: "center",
-    },
-    secondaryActionText: { color: colors.accent, fontWeight: "700", fontSize: 16 },
-    footerCard: {
-      marginTop: 30,
-      backgroundColor: colors.surface,
-      borderRadius: 20,
-      padding: 18,
-      borderWidth: 1,
-      borderColor: colors.surfaceMuted,
-      shadowColor: colors.text,
-      shadowOpacity: 0.06,
-      shadowOffset: { width: 0, height: 12 },
-      shadowRadius: 18,
-      elevation: 4,
-    },
-    footerTitle: { fontSize: 16, fontWeight: "700", color: colors.text, marginBottom: 12 },
-    footerButtons: { flexDirection: "row", gap: 10, flexWrap: "wrap" },
-    footerButton: {
-      flex: 1,
-      minWidth: 100,
-      paddingVertical: 12,
-      borderRadius: 14,
-      backgroundColor: colors.surfaceSoft,
-      alignItems: "center",
-    },
-    footerButtonText: { color: colors.accent, fontWeight: "700" },
   })};

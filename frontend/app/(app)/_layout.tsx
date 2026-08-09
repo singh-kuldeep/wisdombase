@@ -2,11 +2,26 @@ import { useEffect, type ComponentProps } from "react";
 import { Tabs } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { TouchableOpacity, Text } from "react-native";
+import { Image, TouchableOpacity, Text, View } from "react-native";
 import { seedGeneric } from "../../lib/api";
 import { useAuth } from "../../stores/authStore";
 import { useEntries } from "../../stores/entryStore";
 import { ThemeProvider, useTheme } from "../theme-context";
+
+function HeaderLogo() {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+      <Image
+        source={require("../../assets/icon.png")}
+        style={{ width: 28, height: 28, borderRadius: 6 }}
+        resizeMode="contain"
+      />
+      <Text style={{ fontSize: 17, fontWeight: "800", color: "#1565C0", letterSpacing: -0.3 }}>
+        Wisdom<Text style={{ fontWeight: "400" }}>Base</Text>
+      </Text>
+    </View>
+  );
+}
 
 function Icon({ name, focused }: { name: ComponentProps<typeof Feather>["name"]; focused: boolean }) {
   const { colors } = useTheme();
@@ -53,7 +68,8 @@ function AppLayoutContent() {
           elevation: 2,
         },
         headerTitleStyle: { color: colors.text, fontWeight: "700" },
-        headerTitleAlign: "center",
+        headerTitleAlign: "left",
+        headerTitle: () => <HeaderLogo />,
         headerRight: () => <ThemeHeaderButton />,
         headerRightContainerStyle: { paddingRight: 12 },
         headerShadowVisible: false,
