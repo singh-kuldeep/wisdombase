@@ -331,15 +331,15 @@ export default function Capture() {
             <Feather name={showAttachMenu ? "x" : "plus"} size={20} color={isListening ? colors.muted : colors.accent} />
           </TouchableOpacity>
 
-          {/* Text input */}
+          {/* Text input — shows live dictation in real time */}
           <TextInput
             style={styles.composeInput}
-            placeholder="Type your wisdom…"
-            placeholderTextColor={colors.muted}
+            placeholder={isListening ? "Listening…" : "Type your wisdom…"}
+            placeholderTextColor={isListening ? colors.accent : colors.muted}
             multiline
-            value={isListening ? "" : content}
-            onChangeText={isListening ? undefined : setContent}
-            editable={!isListening}
+            scrollEnabled={false}
+            value={content}
+            onChangeText={setContent}
           />
 
           {/* Right: mic → check/cancel when listening, send when content ready */}
