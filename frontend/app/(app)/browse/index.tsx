@@ -227,7 +227,7 @@ export default function Browse() {
         </View>
       ) : null}
 
-      {groups.length > 1 ? (
+      {/* {groups.length > 1 ? (
         <View style={styles.filterRow}>
           <TouchableOpacity
             style={[styles.filterChip, !groupFilter && styles.filterChipActive]}
@@ -250,7 +250,7 @@ export default function Browse() {
             );
           })}
         </View>
-      ) : null}
+      ) : null} */}
 
       <SectionList
         sections={sections}
@@ -331,7 +331,7 @@ function createStyles(colors: typeof import("../../../theme").colors) {
       borderColor: colors.border,
     },
     titleBlock: { flex: 1 },
-    headerTitle: { fontSize: 22, fontWeight: "800", color: colors.text, letterSpacing: -0.4 },
+    headerTitle: { fontSize: 18, fontWeight: "600", color: colors.text, letterSpacing: -0.4 },
     summary: { color: colors.muted, fontSize: 13, marginTop: 2 },
     toolbarActions: { flexDirection: "row", alignItems: "center", gap: 10 },
     iconButton: {
@@ -405,8 +405,8 @@ function createStyles(colors: typeof import("../../../theme").colors) {
     list: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 120, flexGrow: 1 },
     sectionLabel: {
       color: colors.text,
-      fontSize: 18,
-      fontWeight: "800",
+      fontSize: 14,
+      fontWeight: "600",
       marginTop: 8,
       marginBottom: 14,
       letterSpacing: -0.3,

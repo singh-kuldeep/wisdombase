@@ -87,7 +87,7 @@ function createStyles(colors: typeof import("../theme").colors) {
       marginBottom: 12,
       gap: 10,
     },
-    title: { fontSize: 19, fontWeight: "800", color: colors.text, flex: 1 },
+    title: { fontSize: 16, fontWeight: "600", color: colors.text, flex: 1 },
     selectedLabel: { color: colors.accent, fontSize: 12, fontWeight: "700" },
     preview: { fontSize: 15, color: colors.muted, fontFamily: fonts.serif, lineHeight: 23 },
     footer: {
