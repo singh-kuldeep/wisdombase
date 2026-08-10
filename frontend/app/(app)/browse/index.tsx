@@ -632,7 +632,7 @@ function createStyles(colors: typeof import("../../../theme").colors) {
     sectionLabel: {
       color: colors.text,
       fontSize: 18,
-      fontWeight: "800",
+      fontWeight: "600",
       marginTop: 8,
       marginBottom: 14,
       letterSpacing: -0.3,
