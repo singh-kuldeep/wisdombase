@@ -152,7 +152,7 @@ export default function Browse() {
         </View>
       ) : null}
 
-      {groups.length > 1 ? (
+      {/* {groups.length > 1 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -173,7 +173,7 @@ export default function Browse() {
             );
           })}
         </ScrollView>
-      ) : null}
+      ) : null} */}
 
       <FlatList
         data={filtered}
