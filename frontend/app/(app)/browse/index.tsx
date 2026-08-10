@@ -206,6 +206,17 @@ export default function Browse() {
     setSortMenuVisible(false);
   };
 
+  const clearSearch = () => {
+    setSearch("");
+    setSearchActive(false);
+    searchInputRef.current?.blur();
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds([]);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.backgroundGlowOne} />
@@ -252,21 +263,29 @@ export default function Browse() {
               <Feather name="x" size={16} color={colors.text} />
             </TouchableOpacity>
           ) : null}
+          <TouchableOpacity style={styles.searchDoneButton} onPress={clearSearch} activeOpacity={0.85}>
+            <Text style={styles.searchDoneText}>Done</Text>
+          </TouchableOpacity>
         </View>
       ) : null}
 
       {selectionMode ? (
         <View style={styles.selectionBar}>
           <Text style={styles.selectionText}>{selectedIds.length} selected</Text>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton, selectedIds.length === 0 && styles.disabled]}
-            onPress={handleDelete}
-            disabled={!selectedIds.length || deleting}
-          >
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
-              {deleting ? "Deleting…" : "Delete"}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.selectionActions}>
+            <TouchableOpacity style={styles.cancelIconButton} onPress={exitSelectionMode} activeOpacity={0.8}>
+              <Feather name="x" size={15} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.deleteButton, selectedIds.length === 0 && styles.disabled]}
+              onPress={handleDelete}
+              disabled={!selectedIds.length || deleting}
+            >
+              <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
+                {deleting ? "Deleting…" : "Delete"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : null}
 
@@ -328,6 +347,12 @@ export default function Browse() {
         <View style={styles.menuOverlay}>
           <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={closeMenus} />
           <View style={styles.menuSheet}>
+            <View style={styles.menuHeaderRow}>
+              <Text style={styles.menuHeaderTitle}>Browse actions</Text>
+              <TouchableOpacity style={styles.cancelIconButton} onPress={closeMenus} activeOpacity={0.8}>
+                <Feather name="x" size={15} color={colors.text} />
+              </TouchableOpacity>
+            </View>
             <TouchableOpacity
               style={styles.menuRow}
               onPress={() => {
@@ -404,6 +429,12 @@ export default function Browse() {
         <View style={styles.menuOverlay}>
           <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={closeMenus} />
           <View style={styles.menuSheet}>
+            <View style={styles.menuHeaderRow}>
+              <Text style={styles.menuHeaderTitle}>Sort By</Text>
+              <TouchableOpacity style={styles.cancelIconButton} onPress={closeMenus} activeOpacity={0.8}>
+                <Feather name="x" size={15} color={colors.text} />
+              </TouchableOpacity>
+            </View>
             <Text style={styles.sortTitle}>Sort By</Text>
             <TouchableOpacity
               style={[styles.sortOption, sortMode === "date-desc" && styles.sortOptionActive]}
@@ -518,7 +549,23 @@ function createStyles(colors: typeof import("../../../theme").colors) {
       minHeight: 54,
     },
     searchIcon: { marginRight: 10 },
-    searchInput: { flex: 1, color: colors.text, fontSize: 15, paddingVertical: 12 },
+    searchInput: { 
+      flex: 1, color: colors.text, fontSize: 15, paddingVertical: 12,
+            outlineWidth: 0,
+      outlineColor: "transparent",
+      ...(Platform.OS === "web" ? ({ outlineStyle: "none", boxShadow: "none" } as any) : null),
+     },
+    cancelIconButton: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginLeft: 8,
+    },
     searchClear: {
       width: 28,
       height: 28,
@@ -526,6 +573,23 @@ function createStyles(colors: typeof import("../../../theme").colors) {
       backgroundColor: colors.surface,
       alignItems: "center",
       justifyContent: "center",
+      marginLeft: 8,
+    },
+    searchDoneButton: {
+      marginLeft: 10,
+      paddingHorizontal: 12,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    searchDoneText: {
+      color: colors.text,
+      fontSize: 13,
+      fontWeight: "700",
     },
     selectionBar: {
       flexDirection: "row",
@@ -539,6 +603,7 @@ function createStyles(colors: typeof import("../../../theme").colors) {
       marginHorizontal: 18,
       marginBottom: 10,
     },
+    selectionActions: { flexDirection: "row", alignItems: "center", gap: 10 },
     selectionText: { color: colors.text, fontWeight: "700" },
     actionButton: {
       borderRadius: 16,
@@ -615,6 +680,14 @@ function createStyles(colors: typeof import("../../../theme").colors) {
       shadowRadius: 28,
       elevation: 10,
     },
+    menuHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 10,
+      paddingBottom: 6,
+    },
+    menuHeaderTitle: { color: colors.text, fontSize: 15, fontWeight: "800" },
     menuRow: {
       flexDirection: "row",
       alignItems: "center",
