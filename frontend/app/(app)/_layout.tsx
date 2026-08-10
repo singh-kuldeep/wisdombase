@@ -84,7 +84,6 @@ function AppLayoutContent() {
       }}
     >
       <Tabs.Screen name="home" options={{ title: "Home", tabBarIcon: ({ focused }) => <Icon name="home" focused={focused} /> }} />
-      <Tabs.Screen name="capture" options={{ title: "Capture", tabBarIcon: ({ focused }) => <Icon name="pen-tool" focused={focused} /> }} />
       <Tabs.Screen name="ask" options={{ title: "Ask", tabBarIcon: ({ focused }) => <Icon name="message-square" focused={focused} /> }} />
       <Tabs.Screen name="browse" options={{ title: "Browse", tabBarIcon: ({ focused }) => <Icon name="layers" focused={focused} /> }} />
       <Tabs.Screen name="settings" options={{ title: "Settings", tabBarIcon: ({ focused }) => <Icon name="settings" focused={focused} /> }} />

@@ -1,4 +1,4 @@
-import React, { ComponentProps, useEffect, useMemo, useCallback } from "react";
+import React, { ComponentProps, useEffect, useMemo, useCallback, useState } from "react";
 import {
   FlatList,
   ScrollView,
@@ -14,6 +14,7 @@ import { useEntries } from "../../stores/entryStore";
 import { useTheme } from "../theme-context";
 import { colors, fonts } from "../../theme";
 import { Feather } from "@expo/vector-icons";
+import NoteEditorModal from "../../components/NoteEditorModal";
 
 function Icon({ name, focused }: { name: ComponentProps<typeof Feather>["name"]; focused: boolean }) {
   const { colors } = useTheme();
@@ -49,6 +50,7 @@ export default function Home() {
   const { entries, loading, load } = useEntries();
   const { colors } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
+  const [showEditor, setShowEditor] = useState(false);
 
   useEffect(() => {
     //load();
@@ -62,7 +64,7 @@ export default function Home() {
       {/* Quick-action card */}
       <View style={styles.quickCard}>
         {/* Capture bar */}
-        <TouchableOpacity style={styles.quickRow} onPress={() => router.push("/(app)/capture")} activeOpacity={0.75}>
+        <TouchableOpacity style={styles.quickRow} onPress={() => setShowEditor(true)} activeOpacity={0.75}>
           <View style={styles.quickAddBtn}>
             <Feather name="plus" size={18} color={colors.accent} />
           </View>
@@ -107,6 +109,11 @@ export default function Home() {
           {loading ? "Loading your knowledge…" : "Capture your first thought to see it here."}
         </Text>
       )} */}
+
+      <NoteEditorModal
+        visible={showEditor}
+        onClose={() => setShowEditor(false)}
+      />
     </ScrollView>
   );
 }

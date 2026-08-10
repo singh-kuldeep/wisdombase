@@ -70,6 +70,8 @@ export default function NoteEditorModal({ visible, onClose, initialContent = "" 
   const [busy, setBusy] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [showTags, setShowTags] = useState(false);
+  const [titleFocused, setTitleFocused] = useState(false);
+  const [bodyFocused, setBodyFocused] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const contentSnapshot = useRef("");
@@ -87,6 +89,8 @@ export default function NoteEditorModal({ visible, onClose, initialContent = "" 
       setTagsInput("");
       setAttachments([]);
       setBusy(false);
+      setTitleFocused(false);
+      setBodyFocused(false);
     }
   }, [visible]);
 
@@ -249,15 +253,17 @@ export default function NoteEditorModal({ visible, onClose, initialContent = "" 
             keyboardDismissMode="on-drag"
           >
             <TextInput     
-              style={styles.titleInput}
+              style={[styles.titleInput, titleFocused && styles.inputFocused]}
               placeholder="Title"
               placeholderTextColor={colors.muted}
               value={title}
               onChangeText={setTitle}
+              onFocus={() => setTitleFocused(true)}
+              onBlur={() => setTitleFocused(false)}
             />
             <View style={styles.divider} />
             <TextInput
-              style={styles.bodyInput}
+              style={[styles.bodyInput, bodyFocused && styles.inputFocused]}
               placeholder={isListening ? "Listening…" : "Start writing…"}
               placeholderTextColor={isListening ? colors.accent : colors.muted}
               multiline
@@ -266,6 +272,8 @@ export default function NoteEditorModal({ visible, onClose, initialContent = "" 
               value={content}
               onChangeText={setContent}
               autoFocus
+              onFocus={() => setBodyFocused(true)}
+              onBlur={() => setBodyFocused(false)}
             />
 
             {/* Tags row */}
@@ -399,8 +407,13 @@ function createStyles(colors: typeof import("../theme").colors, height: number) 
       paddingVertical: 16,
       outlineWidth: 0,
       outlineColor: "transparent",
+      ...(Platform.OS === "web" ? ({ outlineStyle: "none", boxShadow: "none" } as any) : null),
     },
-    titleInputFocused: { outlineWidth: 0, outlineColor: "transparent" },
+    inputFocused: {
+      outlineWidth: 0,
+      outlineColor: "transparent",
+      ...(Platform.OS === "web" ? ({ outlineStyle: "none", boxShadow: "none" } as any) : null),
+    },
     divider: {
       height: 1,
       backgroundColor: colors.surfaceMuted,
@@ -414,6 +427,7 @@ function createStyles(colors: typeof import("../theme").colors, height: number) 
       textAlignVertical: "top",
       outlineWidth: 0,
       outlineColor: "transparent",
+      ...(Platform.OS === "web" ? ({ outlineStyle: "none", boxShadow: "none" } as any) : null),
     },
     tagsInput: {
       marginTop: 16,

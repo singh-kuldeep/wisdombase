@@ -14,6 +14,7 @@ import {
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import EntryCard from "../../../components/EntryCard";
+import NoteEditorModal from "../../../components/NoteEditorModal";
 import { deleteEntries, type Entry } from "../../../lib/api";
 import { useEntries } from "../../../stores/entryStore";
 import { useTheme } from "../../theme-context";
@@ -33,6 +34,7 @@ export default function Browse() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [deleting, setDeleting] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -275,9 +277,14 @@ export default function Browse() {
         }
       />
 
-      <TouchableOpacity style={styles.fab} onPress={() => router.push("/(app)/capture")} activeOpacity={0.85}>
+      <TouchableOpacity style={styles.fab} onPress={() => setShowEditor(true)} activeOpacity={0.85}>
         <Feather name="plus" size={30} color="#fff" />
       </TouchableOpacity>
+
+      <NoteEditorModal
+        visible={showEditor}
+        onClose={() => setShowEditor(false)}
+      />
     </View>
   );
 }
