@@ -16,19 +16,19 @@ export const colors = {
 };
 
 export const darkColors = {
-  bg: "#0F172A",
-  surface: "#111B2B",
-  surfaceSoft: "#172338",
-  surfaceMuted: "#1E2A3B",
-  text: "#E2E8F0",
-  muted: "#5e6090",
-  accent: "#777ae8",
-  accentSoft: "#153C43",
-  teal: "#777ae8",
-  tealSoft: "#153A41",
-  border: "#243445",
-  gold: "#D4A255",
-  danger: "#F87171",
+  bg: "#09111E",
+  surface: "#101B2A",
+  surfaceSoft: "#162233",
+  surfaceMuted: "#1B2B3F",
+  text: "#F4F7FB",
+  muted: "#A7B3C5",
+  accent: "#8C8FFF",
+  accentSoft: "#1A2640",
+  teal: "#68D4C7",
+  tealSoft: "#122E31",
+  border: "#23344A",
+  gold: "#E1B66B",
+  danger: "#FF7C84",
 };
 
 export const fonts = {

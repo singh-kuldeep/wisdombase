@@ -9,6 +9,8 @@ import { useEntries } from "../../stores/entryStore";
 import { ThemeProvider, useTheme } from "../theme-context";
 
 function HeaderLogo() {
+  const { colors } = useTheme();
+
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
       <Image
@@ -16,7 +18,7 @@ function HeaderLogo() {
         style={{ width: 28, height: 28, borderRadius: 6 }}
         resizeMode="contain"
       />
-      <Text style={{ fontSize: 17, fontWeight: "800", color: "#1565C0", letterSpacing: -0.3 }}>
+      <Text style={{ fontSize: 17, fontWeight: "800", color: colors.text, letterSpacing: -0.3 }}>
         Wisdom<Text style={{ fontWeight: "400" }}>Base</Text>
       </Text>
     </View>
@@ -39,9 +41,9 @@ function ThemeHeaderButton() {
         paddingHorizontal: 12,
         paddingVertical: 8,
         borderRadius: 16,
-        backgroundColor: colors.surface,
+        backgroundColor: colors.surfaceSoft,
         borderWidth: 1,
-        borderColor: colors.surfaceMuted,
+        borderColor: colors.border,
       }}
       onPress={toggleTheme}
     >
@@ -61,11 +63,8 @@ function AppLayoutContent() {
       screenOptions={{
         headerStyle: {
           backgroundColor: colors.bg,
-          shadowColor: colors.text,
-          shadowOpacity: 0.06,
-          shadowOffset: { width: 0, height: 6 },
-          shadowRadius: 12,
-          elevation: 2,
+          shadowColor: "transparent",
+          elevation: 0,
         },
         headerTitleStyle: { color: colors.text, fontWeight: "700" },
         headerTitleAlign: "left",
