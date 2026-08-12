@@ -258,6 +258,7 @@ export default function NoteEditorModal({ visible, onClose, initialContent = "" 
               placeholderTextColor={colors.muted}
               value={title}
               onChangeText={setTitle}
+              autoFocus
               onFocus={() => setTitleFocused(true)}
               onBlur={() => setTitleFocused(false)}
             />
@@ -271,7 +272,6 @@ export default function NoteEditorModal({ visible, onClose, initialContent = "" 
               textAlignVertical="top"
               value={content}
               onChangeText={setContent}
-              autoFocus
               onFocus={() => setBodyFocused(true)}
               onBlur={() => setBodyFocused(false)}
             />
