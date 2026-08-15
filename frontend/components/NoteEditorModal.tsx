@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   KeyboardAvoidingView,
   Modal,
@@ -21,7 +20,8 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
-import { ingest, ingestFiles, type PickedFile } from "../lib/api";
+import { useCustomAlert } from "./CustomAlert";
+import { ingest, ingestFiles, updateEntry, type PickedFile } from "../lib/api";
 import { DEFAULT_GROUP, parseTags } from "../lib/constants";
 import { useEntries } from "../stores/entryStore";
 import { useTheme } from "../app/theme-context";
@@ -59,10 +59,28 @@ function appendVoiceText(previous: string, next: string): string {
 interface Props {
   visible: boolean;
   onClose: () => void;
+  mode?: "create" | "edit";
+  entryId?: string;
+  initialTitle?: string;
   initialContent?: string;
+  initialTags?: string[];
+  initialGroup?: string | null;
+  onSaved?: () => void;
 }
 
-export default function NoteEditorModal({ visible, onClose, initialContent = "" }: Props) {
+export default function NoteEditorModal({
+  visible,
+  onClose,
+  mode = "create",
+  entryId,
+  initialTitle = "",
+  initialContent = "",
+  initialTags = [],
+  initialGroup,
+  onSaved,
+}: Props) {
+  const isEdit = mode === "edit";
+  const { showAlert } = useCustomAlert();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState(initialContent);
   const [tagsInput, setTagsInput] = useState("");
@@ -84,15 +102,15 @@ export default function NoteEditorModal({ visible, onClose, initialContent = "" 
   // Reset when opened
   useEffect(() => {
     if (visible) {
-      setTitle("");
+      setTitle(initialTitle);
       setContent(initialContent);
-      setTagsInput("");
+      setTagsInput(initialTags.join(", "));
       setAttachments([]);
       setBusy(false);
       setTitleFocused(false);
       setBodyFocused(false);
     }
-  }, [visible]);
+  }, [visible, initialTitle, initialContent, initialTags]);
 
   // Pulse animation while listening
   useEffect(() => {
@@ -136,7 +154,7 @@ export default function NoteEditorModal({ visible, onClose, initialContent = "" 
     if (busy || isListening) return;
     const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("Microphone access needed", "Please allow microphone access.");
+      await showAlert({ title: "Microphone access needed", message: "Please allow microphone access." });
       return;
     }
     contentSnapshot.current = content;
@@ -174,27 +192,41 @@ export default function NoteEditorModal({ visible, onClose, initialContent = "" 
   const save = async () => {
     const trimmedContent = content.trim();
     if (!trimmedContent && !attachments.length) {
-      Alert.alert("Nothing to save", "Write something before saving.");
+      await showAlert({ title: "Nothing to save", message: "Write something before saving." });
       return;
     }
     setBusy(true);
     const tags = parseTags(tagsInput);
     try {
-      if (trimmedContent) {
-        await ingest({
+      if (isEdit) {
+        if (!entryId) throw new Error("Missing entry id for update.");
+        await updateEntry(entryId, {
           title: title.trim() || undefined,
           content: trimmedContent,
-          group: DEFAULT_GROUP,
+          group: initialGroup ?? DEFAULT_GROUP,
           tags,
         });
+      } else {
+        if (trimmedContent) {
+          await ingest({
+            title: title.trim() || undefined,
+            content: trimmedContent,
+            group: DEFAULT_GROUP,
+            tags,
+          });
+        }
+        if (attachments.length) {
+          await ingestFiles({ assets: attachments, group: DEFAULT_GROUP, tags });
+        }
       }
-      if (attachments.length) {
-        await ingestFiles({ assets: attachments, group: DEFAULT_GROUP, tags });
-      }
-      reloadEntries();
+      await reloadEntries();
+      onSaved?.();
       onClose();
     } catch (e) {
-      Alert.alert("Couldn't save", (e as Error).message);
+      await showAlert({
+        title: isEdit ? "Couldn't update" : "Couldn't save",
+        message: (e as Error).message,
+      });
     } finally {
       setBusy(false);
     }
@@ -305,14 +337,18 @@ export default function NoteEditorModal({ visible, onClose, initialContent = "" 
 
           {/* ── Bottom toolbar ── */}
           <View style={styles.toolbar}>
-            {/* Attach files */}
-            <TouchableOpacity style={styles.toolbarBtn} onPress={pickFiles} disabled={busy}>
-              <Feather name="image" size={22} color={colors.muted} />
-            </TouchableOpacity>
+            {!isEdit && (
+              <>
+                {/* Attach files */}
+                <TouchableOpacity style={styles.toolbarBtn} onPress={pickFiles} disabled={busy}>
+                  <Feather name="image" size={22} color={colors.muted} />
+                </TouchableOpacity>
 
-            <TouchableOpacity style={styles.toolbarBtn} onPress={pickFiles} disabled={busy}>
-              <Feather name="paperclip" size={22} color={colors.muted} />
-            </TouchableOpacity>
+                <TouchableOpacity style={styles.toolbarBtn} onPress={pickFiles} disabled={busy}>
+                  <Feather name="paperclip" size={22} color={colors.muted} />
+                </TouchableOpacity>
+              </>
+            )}
 
             {/* Voice */}
             {isListening ? (

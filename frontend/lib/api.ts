@@ -88,6 +88,13 @@ export function getUsage(): Promise<Usage> {
   return request("/usage", { method: "GET" });
 }
 
+export function getAccountStatus(email: string): Promise<{ exists: boolean; deleted: boolean }> {
+  return request("/auth/account-status", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
+}
+
 export type LinkResult = {
   url: string;
   ok: boolean;
@@ -173,6 +180,16 @@ export function refreshMemory(input: {
 
 export function fetchEntry(entryId: string): Promise<Entry> {
   return request(`/entries/${entryId}`, { method: "GET" });
+}
+
+export function updateEntry(
+  entryId: string,
+  input: { title?: string; content: string; group?: string; tags?: string[] },
+): Promise<{ updated: boolean; entry_id: string; chunk_count: number }> {
+  return request(`/entries/${entryId}`, {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
 export function deleteEntries(entryIds: string[]): Promise<{ deleted: number }> {

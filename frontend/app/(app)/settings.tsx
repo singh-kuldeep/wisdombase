@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useCustomAlert } from "../../components/CustomAlert";
 import {
   getProviderKeys,
   setProviderKeys,
@@ -26,6 +25,7 @@ import { fonts } from "../../theme";
 
 export default function Settings() {
   const router = useRouter();
+  const { showAlert } = useCustomAlert();
   const { session, signOut } = useAuth();
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [order, setOrder] = useState<ProviderId[]>([]);
@@ -54,18 +54,27 @@ export default function Settings() {
       const providers = await getProviderKeys();
       const api_key = providers.find((p) => p.provider === "anthropic")?.apiKey ?? null;
       if (!providers.length) {
-        Alert.alert("Add a key first", "Save an AI provider key above to build your memory profile.");
+        await showAlert({
+          title: "Add a key first",
+          message: "Save an AI provider key above to build your memory profile.",
+        });
         return;
       }
       const res = await refreshMemory({ providers, api_key });
       if (res.updated) {
         setMemory(res.profile);
-        Alert.alert("Memory updated", "Your long-term memory profile has been refreshed.");
+        await showAlert({
+          title: "Memory updated",
+          message: "Your long-term memory profile has been refreshed.",
+        });
       } else {
-        Alert.alert("Nothing to summarize yet", res.detail ?? "Capture some entries first.");
+        await showAlert({
+          title: "Nothing to summarize yet",
+          message: res.detail ?? "Capture some entries first.",
+        });
       }
     } catch (e) {
-      Alert.alert("Couldn't refresh memory", (e as Error).message);
+      await showAlert({ title: "Couldn't refresh memory", message: (e as Error).message });
     } finally {
       setRefreshing(false);
     }
@@ -107,12 +116,12 @@ export default function Settings() {
     }
     await setProviderKeys(result);
     setOrder(result.map((k) => k.provider));
-    Alert.alert(
-      "Saved",
-      result.length
+    await showAlert({
+      title: "Saved",
+      message: result.length
         ? "Keys stored securely on this device. Models are tried in priority order, falling back to the next on failure."
-        : "All keys removed."
-    );
+        : "All keys removed.",
+    });
   };
 
   return (
@@ -207,7 +216,7 @@ export default function Settings() {
             await signOut();
             router.replace("/(auth)/sign-in");
           } catch (e) {
-            Alert.alert("Sign out failed", (e as Error).message);
+            await showAlert({ title: "Sign out failed", message: (e as Error).message });
           }
         }}
       >
@@ -261,19 +270,19 @@ export default function Settings() {
                     router.replace("/(auth)/sign-in");
 
                     setTimeout(() => {
-                      Alert.alert(
-                        "Account Deleted",
-                        result.email_sent
+                      showAlert({
+                        title: "Account Deleted",
+                        message: result.email_sent
                           ? "Your account will be deleted and you will receive a confirmation email. All your data has been permanently removed."
-                          : "Your account will be deleted. All your data has been permanently removed."
-                      );
+                          : "Your account will be deleted. All your data has been permanently removed.",
+                      });
                     }, 500);
                   } catch (e) {
                     setDeleting(false);
-                    Alert.alert(
-                      "Deletion Failed",
-                      (e as Error).message || "Could not delete account. Please try again or contact support."
-                    );
+                    await showAlert({
+                      title: "Deletion Failed",
+                      message: (e as Error).message || "Could not delete account. Please try again or contact support.",
+                    });
                   }
                 }}
               >

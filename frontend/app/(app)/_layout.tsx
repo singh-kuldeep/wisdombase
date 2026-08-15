@@ -6,7 +6,7 @@ import { Image, TouchableOpacity, Text, View } from "react-native";
 import { seedGeneric } from "../../lib/api";
 import { useAuth } from "../../stores/authStore";
 import { useEntries } from "../../stores/entryStore";
-import { ThemeProvider, useTheme } from "../theme-context";
+import { useTheme } from "../theme-context";
 
 function HeaderLogo() {
   const { colors } = useTheme();
@@ -113,9 +113,5 @@ export default function AppLayout() {
     };
   }, [userId]);
 
-  return (
-    <ThemeProvider>
-      <AppLayoutContent />
-    </ThemeProvider>
-  );
+  return <AppLayoutContent />;
 }

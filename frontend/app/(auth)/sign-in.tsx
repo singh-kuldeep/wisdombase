@@ -8,15 +8,18 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
+import { getAccountStatus } from "../../lib/api";
 import { useAuth } from "../../stores/authStore";
 import { colors, fonts } from "../../theme";
 
 type Tab = "password" | "code";
 type Channel = "email" | "phone";
+const ACCOUNT_DELETED_REDIRECT = "ACCOUNT_DELETED_REDIRECT";
 
 export default function SignIn() {
   const { signIn, sendEmailOtp, verifyEmailOtp, sendPhoneOtp, verifyPhoneOtp } = useAuth();
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>("password");
   const [channel, setChannel] = useState<Channel>("email");
   const [codeSent, setCodeSent] = useState(false);
@@ -48,17 +51,39 @@ export default function SignIn() {
       await fn();
       after?.();
     } catch (e) {
+      if ((e as Error).message === ACCOUNT_DELETED_REDIRECT) return;
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   };
 
-  const submitPassword = () => run(() => signIn(email.trim(), password));
+  const ensureNotDeletedAccount = async (inputEmail: string): Promise<void> => {
+    const trimmed = inputEmail.trim();
+    if (!trimmed) return;
+    const status = await getAccountStatus(trimmed);
+    if (status.deleted) {
+      router.replace({ pathname: "/(auth)/account-deleted", params: { email: trimmed } });
+      throw new Error(ACCOUNT_DELETED_REDIRECT);
+    }
+  };
+
+  const submitPassword = () =>
+    run(async () => {
+      await ensureNotDeletedAccount(email);
+      await signIn(email.trim(), password);
+    });
 
   const sendCode = () =>
     run(
-      () => (channel === "email" ? sendEmailOtp(email.trim()) : sendPhoneOtp(phone.trim())),
+      async () => {
+        if (channel === "email") {
+          await ensureNotDeletedAccount(email);
+          await sendEmailOtp(email.trim());
+          return;
+        }
+        await sendPhoneOtp(phone.trim());
+      },
       () => {
         setCodeSent(true);
         setNotice(

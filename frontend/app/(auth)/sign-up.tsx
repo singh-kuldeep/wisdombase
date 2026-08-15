@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { Link, useRouter } from "expo-router";
+import { getAccountStatus } from "../../lib/api";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../stores/authStore";
 import { colors, fonts } from "../../theme";
@@ -30,7 +31,20 @@ export default function SignUp() {
     setNotice(null);
     setBusy(true);
     try {
-      await signUp(email.trim(), password, phone.trim() || undefined);
+      const trimmedEmail = email.trim();
+      const status = await getAccountStatus(trimmedEmail);
+      if (status.deleted) {
+        setError(
+          "This account was deleted. Create a new account with a different email address.",
+        );
+        return;
+      }
+      if (status.exists) {
+        setError("An account with this email already exists. Please sign in instead.");
+        return;
+      }
+
+      await signUp(trimmedEmail, password, phone.trim() || undefined);
       const { data } = await supabase.auth.getSession();
       if (data.session) {
         router.replace("/onboarding");

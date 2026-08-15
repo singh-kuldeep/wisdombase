@@ -59,6 +59,13 @@ class DeleteEntriesRequest(BaseModel):
     entry_ids: List[str]
 
 
+class UpdateEntryRequest(BaseModel):
+    title: Optional[str] = None
+    content: str
+    group: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
 class Turn(BaseModel):
     role: str
     content: str
@@ -82,6 +89,10 @@ class MemoryRefreshRequest(BaseModel):
     providers: List[ProviderCred] = []
 
 
+class AccountStatusRequest(BaseModel):
+    email: str
+
+
 # ----- Routes ---------------------------------------------------------------
 
 
@@ -90,6 +101,60 @@ def root():
     # `env` lets you confirm which environment a running instance is (handy when
     # you have both a local dev server and the Railway prod deploy).
     return {"status": "ok", "service": "wisdombase", "env": config.APP_ENV}
+
+
+def _find_auth_user_by_email(supabase, email: str):
+    """Find an auth user by email via the admin API, paging through results."""
+    page = 1
+    per_page = 200
+    target = (email or "").strip().lower()
+    if not target:
+        return None
+
+    while True:
+        users = supabase.auth.admin.list_users(page=page, per_page=per_page) or []
+        for user in users:
+            user_email = (getattr(user, "email", "") or "").strip().lower()
+            if user_email == target:
+                return user
+
+        if len(users) < per_page:
+            return None
+        page += 1
+
+
+@app.post("/auth/account-status")
+def account_status(req: AccountStatusRequest):
+    """Return whether an email already exists and whether it was soft-deleted."""
+    email = (req.email or "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required.")
+
+    supabase = get_supabase()
+
+    try:
+        user = _find_auth_user_by_email(supabase, email)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Could not check account status.")
+
+    if not user:
+        return {"exists": False, "deleted": False}
+
+    deleted = False
+    try:
+        profile_resp = (
+            supabase.table("profiles")
+            .select("deleted_at")
+            .eq("id", user.id)
+            .limit(1)
+            .execute()
+        )
+        deleted = bool(profile_resp.data and profile_resp.data[0].get("deleted_at"))
+    except Exception:
+        # If profile lookup fails, still treat this as an existing (not deleted) account.
+        deleted = False
+
+    return {"exists": True, "deleted": deleted}
 
 
 def _store_entry(
@@ -542,6 +607,58 @@ def get_entry(entry_id: str, user_id: str = CurrentUser):
     if not resp.data:
         raise HTTPException(status_code=404, detail="Entry not found.")
     return resp.data
+
+
+@app.put("/entries/{entry_id}")
+def update_entry(entry_id: str, req: UpdateEntryRequest, user_id: str = CurrentUser):
+    """Update an existing entry and refresh its chunk embeddings."""
+    content = (req.content or "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Content cannot be empty.")
+
+    supabase = get_supabase()
+
+    existing = (
+        supabase.table("entries")
+        .select("id")
+        .eq("id", entry_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Entry not found.")
+
+    update_data = {
+        "title": req.title,
+        "content": content,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if req.group is not None:
+        update_data["group_name"] = req.group
+    if req.tags is not None:
+        update_data["tags"] = req.tags
+
+    supabase.table("entries").update(update_data).eq("id", entry_id).eq("user_id", user_id).execute()
+
+    # Rebuild chunks/embeddings so retrieval reflects the edited content.
+    supabase.table("chunks").delete().eq("entry_id", entry_id).eq("user_id", user_id).execute()
+    chunks = chunk_text(content)
+    if chunks:
+        embeddings = embed_many(chunks)
+        rows = [
+            {
+                "entry_id": entry_id,
+                "user_id": user_id,
+                "content": chunk,
+                "embedding": embedding,
+                "chunk_index": i,
+            }
+            for i, (chunk, embedding) in enumerate(zip(chunks, embeddings))
+        ]
+        supabase.table("chunks").insert(rows).execute()
+
+    return {"updated": True, "entry_id": entry_id, "chunk_count": len(chunks)}
 
 
 @app.post("/entries/delete")

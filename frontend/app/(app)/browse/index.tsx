@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Alert,
   Keyboard,
   Platform,
   RefreshControl,
@@ -15,6 +14,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
+import { useCustomAlert } from "../../../components/CustomAlert";
 import EntryCard from "../../../components/EntryCard";
 import NoteEditorModal from "../../../components/NoteEditorModal";
 import { deleteEntries, type Entry } from "../../../lib/api";
@@ -31,6 +31,7 @@ type SortMode = "date-desc" | "date-asc" | "title-asc";
 
 export default function Browse() {
   const router = useRouter();
+  const { showAlert, showConfirm } = useCustomAlert();
   const { entries, loading, load } = useEntries();
   const [search, setSearch] = useState("");
   const [searchActive, setSearchActive] = useState(false);
@@ -125,15 +126,13 @@ export default function Browse() {
       (selectedIds.length === 1 ? "y" : "ies") +
       "? This cannot be undone.";
 
-    const shouldDelete =
-      Platform.OS === "web" && typeof window !== "undefined"
-        ? window.confirm(message)
-        : await new Promise<boolean>((resolve) => {
-            Alert.alert("Delete entries", message, [
-              { text: "Cancel", style: "cancel", onPress: () => resolve(false) },
-              { text: "Delete", style: "destructive", onPress: () => resolve(true) },
-            ]);
-          });
+    const shouldDelete = await showConfirm({
+      title: "Delete entries",
+      message,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      destructive: true,
+    });
 
     if (!shouldDelete) return;
 
@@ -144,7 +143,7 @@ export default function Browse() {
       setSelectionMode(false);
       load();
     } catch (error) {
-      Alert.alert("Delete failed", (error as Error).message);
+      await showAlert({ title: "Delete failed", message: (error as Error).message });
     } finally {
       setDeleting(false);
     }
@@ -194,7 +193,10 @@ export default function Browse() {
       return;
     }
 
-    Alert.alert("Print unavailable", "Printing is currently supported on web only.");
+    showAlert({
+      title: "Print unavailable",
+      message: "Printing is currently supported on web only.",
+    });
   };
 
   const handleMore = () => {

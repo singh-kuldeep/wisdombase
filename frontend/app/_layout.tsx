@@ -3,13 +3,16 @@ import { ActivityIndicator, View } from "react-native";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { CustomAlertProvider } from "../components/CustomAlert";
+import { ThemeProvider, useTheme } from "./theme-context";
 import { useAuth } from "../stores/authStore";
 import { colors } from "../theme";
 
-export default function RootLayout() {
+function RootLayoutContent() {
   const { session, initializing, init } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const { colors } = useTheme();
 
   useEffect(() => {
     init();
@@ -36,8 +39,18 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style={colors.bg === "#09111E" ? "light" : "dark"} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+      <CustomAlertProvider>
+        <StatusBar style={colors.bg === "#09111E" ? "light" : "dark"} />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+      </CustomAlertProvider>
     </SafeAreaProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutContent />
+    </ThemeProvider>
   );
 }
