@@ -134,7 +134,7 @@ export default function SignIn() {
           </>
         ) : (
           <>
-            <View style={styles.channelRow}>
+            {/* <View style={styles.channelRow}>
               {(["email", "phone"] as Channel[]).map((c) => (
                 <TouchableOpacity
                   key={c}
@@ -151,7 +151,7 @@ export default function SignIn() {
                   </Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </View> */}
 
             {channel === "email" ? (
               <TextInput

@@ -31,7 +31,8 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "expo-asset"
+      "expo-asset",
+      "expo-speech-recognition"
     ],
     "extra": {
       "router": {},
