@@ -59,7 +59,7 @@ IS_DEV = not IS_PRODUCTION
 # Allowed CORS origins. In development we allow everything so the Expo dev
 # server / LAN device / localhost web can all reach the API. In production we
 # restrict to an explicit comma-separated allow-list from CORS_ORIGINS (e.g.
-# "https://wisdombase.expo.app,https://wisdombase.vercel.app"). Native mobile
+# "https://www.wisdombase.in,https://wisdombase.vercel.app"). Native mobile
 # apps don't send an Origin header, so this only affects the web build.
 _cors_env = os.environ.get("CORS_ORIGINS", "").strip()
 if IS_PRODUCTION and _cors_env:

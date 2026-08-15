@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # WisdomBase Web Deployment Script
-# This script builds and deploys the web app to wisdombase.expo.app
+# This script builds and deploys the web app to Vercel
 
 set -e
 
@@ -22,4 +22,4 @@ vercel --prod
 
 echo ""
 echo "✨ Deployment complete!"
-echo "🔗 Your app is live at: https://wisdombase.expo.app/"
+echo "🔗 Your app is live at: https://www.wisdombase.in/"

@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 import httpx
 from bs4 import BeautifulSoup
 
-USER_AGENT = "Mozilla/5.0 (compatible; WisdomBaseBot/1.0; +https://wisdombase.expo.app)"
+USER_AGENT = "Mozilla/5.0 (compatible; WisdomBaseBot/1.0; +https://www.wisdombase.in)"
 TIMEOUT = 15.0
 MAX_BYTES = 5_000_000  # cap downloads at ~5 MB
 
