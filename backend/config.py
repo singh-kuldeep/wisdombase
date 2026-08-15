@@ -6,18 +6,55 @@ behaviour, or override any of them with an environment variable of the same name
 """
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Base directory of the backend
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def init_environment():
+    """Load environment variables based on APP_ENV and available .env files.
+
+    Priority order:
+      1. Existing system environment variables (always take precedence)
+      2. .env.local (gitignored local overrides)
+      3. Environment-specific file: .env.development / .env.dev / .env.production
+      4. Standard .env file
+    """
+    app_env = os.environ.get("APP_ENV", "").strip().lower()
+
+    # 1. .env.local
+    load_dotenv(dotenv_path=BASE_DIR / ".env.local", override=False)
+
+    # 2. Environment specific file
+    if app_env in ("production", "prod"):
+        load_dotenv(dotenv_path=BASE_DIR / ".env.production", override=False)
+    elif app_env in ("development", "dev", "local"):
+        load_dotenv(dotenv_path=BASE_DIR / ".env.development", override=False)
+        load_dotenv(dotenv_path=BASE_DIR / ".env.dev", override=False)
+    else:
+        # Default fallback attempt for development environments
+        load_dotenv(dotenv_path=BASE_DIR / ".env.development", override=False)
+        load_dotenv(dotenv_path=BASE_DIR / ".env.dev", override=False)
+
+    # 3. Standard .env file and env file as fallback
+    load_dotenv(dotenv_path=BASE_DIR / ".env", override=False)
+    load_dotenv(dotenv_path=BASE_DIR / "env", override=False)
+
+
+
+init_environment()
 
 
 # Which environment this instance is running as: "development" (local / dev
 # deploy) or "production". Drives environment-specific behaviour like CORS. Set
-# APP_ENV in the environment; local .env should use "development", the Railway
-# prod service should set "production".
+# APP_ENV in the environment; local .env or .env.development should use "development",
+# the prod service should set "production".
 APP_ENV = os.environ.get("APP_ENV", "development").strip().lower()
-IS_PRODUCTION = APP_ENV == "production"
+IS_PRODUCTION = APP_ENV in ("production", "prod")
+IS_DEV = not IS_PRODUCTION
 
 # Allowed CORS origins. In development we allow everything so the Expo dev
 # server / LAN device / localhost web can all reach the API. In production we
@@ -38,5 +75,6 @@ else:
 FREE_QUESTION_LIMIT = int(os.environ.get("FREE_QUESTION_LIMIT", "20"))
 
 # The shared Anthropic key used to answer those free questions, common to all
-# users. Stored in the backend .env as ANTHROPIC_API_KEY (never sent to clients).
+# users. Stored in the backend .env / .env.development as ANTHROPIC_API_KEY.
 SHARED_ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+

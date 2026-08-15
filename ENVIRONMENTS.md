@@ -1,31 +1,25 @@
 # Environments: Dev vs Prod
 
-This project separates a **development** environment (your laptop / LAN) from
-**production** (Railway backend + Vercel web + store apps). The difference is
+This project separates a **development** environment (local / LAN / Dev cloud backend) from
+**production** (Vercel/Railway production backend + Vercel web + store apps). The difference is
 driven entirely by environment variables and build profiles — never by editing
 code before a deploy.
 
-| | Development | Production |
-|---|---|---|
-| Backend | `uvicorn` on your machine (`APP_ENV=development`) | Railway (`APP_ENV=production`) |
-| Web frontend | `expo start` (loads `.env.development`) | Vercel (`expo export` loads `.env.production`) |
-| Mobile | `development` EAS profile / Expo Go | `production` EAS profile → App/Play Store |
-| CORS | all origins allowed | restricted to `CORS_ORIGINS` |
-| Database | see note below | Supabase `irxfwbsfsnwvplobpskt` |
+| Component    | Local / Hosted Dev                             | Production                                         |
+| ------------ | ---------------------------------------------- | -------------------------------------------------- |
+| Backend      | `uvicorn` / Dev Vercel (`APP_ENV=development`) | Production Vercel / Railway (`APP_ENV=production`) |
+| Web frontend | `expo start` (loads `.env.development`)        | Vercel (`expo export` loads `.env.production`)     |
+| Mobile       | `development` EAS profile / Expo Go            | `production` EAS profile → App/Play Store          |
+| CORS         | All origins allowed (`*`)                      | Restricted to `CORS_ORIGINS`                       |
+| Database     | Isolated Dev Supabase Project                  | Production Supabase Project                        |
 
-> **Database note (current state):** dev and prod currently share the **same**
-> Supabase project. So local testing reads/writes live data — be careful with
-> the delete-account flow and migrations. See
-> [Isolating the dev database](#isolating-the-dev-database) to fix this; the
-> plumbing is already in place so it's a one-file change.
-
----
+***
 
 ## Daily workflow: test on dev, then ship to prod
 
 ### 1. Run everything locally (development)
 
-```bash
+```Shell
 # Terminal 1 — backend (reads backend/.env, APP_ENV=development)
 cd backend
 source venv/bin/activate
@@ -54,7 +48,7 @@ Find it with `ifconfig | grep "inet "` (Mac/Linux).
 Railway holds the prod env vars (`APP_ENV=production`, `CORS_ORIGINS`, Supabase,
 Anthropic — see `backend/.env.production.example`). Deploy:
 
-```bash
+```Shell
 cd backend
 railway up            # deploys current code to the linked prod service
 ```
@@ -64,14 +58,14 @@ Verify: `curl https://wisdombase-production.up.railway.app/` should report
 
 ### 3. Deploy web frontend to prod (Vercel)
 
-```bash
+```Shell
 cd frontend
 npm run deploy:web    # expo export (uses .env.production) + vercel --prod
 ```
 
 ### 4. Ship mobile apps to prod (EAS)
 
-```bash
+```Shell
 cd frontend
 npx eas build --platform all --profile production
 npx eas submit --platform ios
@@ -80,7 +74,7 @@ npx eas submit --platform android
 
 For internal testing against the prod backend first, use `--profile preview`.
 
----
+***
 
 ## How environment selection works
 
@@ -90,9 +84,10 @@ dashboard. `python-dotenv` does not override real env vars, so Railway's value
 always wins. `CORS_ORIGINS` is only enforced when `APP_ENV=production`.
 
 **Frontend** — Expo auto-loads env files by mode:
-- `expo start` → `.env.development`
-- `expo export` (i.e. `build:web`) → `.env.production`
-- `.env.local` overrides either and is gitignored — use it for personal values
+
+* `expo start` → `.env.development`
+* `expo export` (i.e. `build:web`) → `.env.production`
+* `.env.local` overrides either and is gitignored — use it for personal values
   like your LAN IP.
 
 All `EXPO_PUBLIC_*` values (Supabase URL, anon key, API URL) are baked into the
@@ -104,7 +99,7 @@ secret in an `EXPO_PUBLIC_*` var.
 profile (not in the `.env` files). The `development` profile points at a LAN IP;
 `preview`/`production` point at Railway.
 
----
+***
 
 ## Database migrations
 
@@ -118,7 +113,7 @@ backend/schema.sql                        # one-time initial setup
 backend/migrations/001_add_soft_delete.sql
 ```
 
----
+***
 
 ## Isolating the dev database
 
@@ -131,11 +126,11 @@ migrations. One-time setup:
 3. From the dev project's **Settings → API**, copy its URL, `anon` key, and
    `service_role` key.
 4. Point dev at it — the only changes needed:
-   - `backend/.env`: set `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` to the
+   * `backend/.env`: set `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` to the
      **dev** project.
-   - `frontend/.env.development`: set `EXPO_PUBLIC_SUPABASE_URL` +
+   * `frontend/.env.development`: set `EXPO_PUBLIC_SUPABASE_URL` +
      `EXPO_PUBLIC_SUPABASE_ANON_KEY` to the **dev** project.
-   - `frontend/eas.json` `development` profile: same two values.
+   * `frontend/eas.json` `development` profile: same two values.
 
 Prod config (Railway vars, `.env.production`, `eas.json` prod/preview) stays on
 the original project. Now local dev is fully isolated from prod data.
