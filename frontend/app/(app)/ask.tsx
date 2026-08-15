@@ -261,6 +261,12 @@ export default function Ask() {
             multiline
             scrollEnabled={false}
             textAlignVertical="top"
+            onKeyPress={(e) => {
+              if (e.nativeEvent.key === "Enter") {
+                e.preventDefault();
+                send();
+              }
+            }}
             onContentSizeChange={(e) => setInputHeight(e.nativeEvent.contentSize.height)}
             onSubmitEditing={() => send()}
           />
