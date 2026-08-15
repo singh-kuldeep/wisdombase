@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -22,6 +22,8 @@ export default function SignUp() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const phoneRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   const submit = async () => {
     setError(null);
@@ -59,22 +61,30 @@ export default function SignUp() {
           keyboardType="email-address"
           value={email}
           onChangeText={setEmail}
+          returnKeyType="next"
+          onSubmitEditing={() => phoneRef.current?.focus()}
         />
         <TextInput
+          ref={phoneRef}
           style={styles.input}
           placeholder="Mobile number (optional, e.g. +14155551234)"
           placeholderTextColor={colors.muted}
           keyboardType="phone-pad"
           value={phone}
           onChangeText={setPhone}
+          returnKeyType="next"
+          onSubmitEditing={() => passwordRef.current?.focus()}
         />
         <TextInput
+          ref={passwordRef}
           style={styles.input}
           placeholder="Password (min 6 characters)"
           placeholderTextColor={colors.muted}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
+          returnKeyType="done"
+          onSubmitEditing={submit}
         />
 
         {!!error && <Text style={styles.error}>{error}</Text>}

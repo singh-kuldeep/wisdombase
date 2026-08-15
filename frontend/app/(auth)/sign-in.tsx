@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -29,6 +29,9 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const passwordRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+  const codeRef = useRef<TextInput>(null);
 
   const reset = () => {
     setError(null);
@@ -118,14 +121,19 @@ export default function SignIn() {
               keyboardType="email-address"
               value={email}
               onChangeText={setEmail}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
             />
             <TextInput
+              ref={passwordRef}
               style={styles.input}
               placeholder="Password"
               placeholderTextColor={colors.muted}
               secureTextEntry
               value={password}
               onChangeText={setPassword}
+              returnKeyType="done"
+              onSubmitEditing={submitPassword}
             />
             {!!error && <Text style={styles.error}>{error}</Text>}
             <TouchableOpacity style={styles.button} onPress={submitPassword} disabled={busy}>
@@ -163,10 +171,19 @@ export default function SignIn() {
                 value={email}
                 onChangeText={setEmail}
                 editable={!codeSent}
+                returnKeyType={codeSent ? "next" : "send"}
+                onSubmitEditing={() => {
+                  if (codeSent) {
+                    codeRef.current?.focus();
+                  } else {
+                    sendCode();
+                  }
+                }}
               />
             ) : (
               <>
                 <TextInput
+                  ref={phoneRef}
                   style={styles.input}
                   placeholder="Phone (e.g. +14155551234)"
                   placeholderTextColor={colors.muted}
@@ -174,6 +191,14 @@ export default function SignIn() {
                   value={phone}
                   onChangeText={setPhone}
                   editable={!codeSent}
+                  returnKeyType={codeSent ? "next" : "send"}
+                  onSubmitEditing={() => {
+                    if (codeSent) {
+                      codeRef.current?.focus();
+                    } else {
+                      sendCode();
+                    }
+                  }}
                 />
                 <Text style={styles.smsHint}>
                   Phone codes require an SMS provider to be configured. Email codes
@@ -184,12 +209,15 @@ export default function SignIn() {
 
             {codeSent && (
               <TextInput
+                ref={codeRef}
                 style={styles.input}
                 placeholder="6-digit code"
                 placeholderTextColor={colors.muted}
                 keyboardType="number-pad"
                 value={code}
                 onChangeText={setCode}
+                returnKeyType="done"
+                onSubmitEditing={verifyCode}
               />
             )}
 
