@@ -51,6 +51,7 @@ export default function Home() {
   const { colors } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   const [showEditor, setShowEditor] = useState(false);
+  const [autoStartDictation, setAutoStartDictation] = useState(false);
 
   useEffect(() => {
     //load();
@@ -64,25 +65,50 @@ export default function Home() {
       {/* Quick-action card */}
       <View style={styles.quickCard}>
         {/* Capture bar */}
-        <TouchableOpacity style={styles.quickRow} onPress={() => setShowEditor(true)} activeOpacity={0.75}>
-          <View style={styles.quickAddBtn}>
-            <Feather name="plus" size={18} color={colors.accent} />
-          </View>
-          <Text style={styles.quickPlaceholder}>Type your wisdom…</Text>
-          <View style={styles.quickSendBtn}>
-            <Feather name="arrow-right" size={16} color={colors.accent} />
-          </View>
-        </TouchableOpacity>
+        <View style={styles.quickRow}>
+          <TouchableOpacity
+            style={styles.quickRowMain}
+            onPress={() => {
+              setAutoStartDictation(false);
+              setShowEditor(true);
+            }}
+            activeOpacity={0.75}
+          >
+            <View style={styles.quickAddBtn}>
+              <Feather name="plus" size={18} color={colors.accent} />
+            </View>
+            <Text style={styles.quickPlaceholder}>Type your wisdom…</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickMicBtn}
+            onPress={() => {
+              setAutoStartDictation(true);
+              setShowEditor(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Feather name="mic" size={16} color={colors.accent} />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.quickDivider} />
 
         {/* Ask bar */}
-        <TouchableOpacity style={styles.quickRow} onPress={() => router.push("/(app)/ask")} activeOpacity={0.75}>
-          <Text style={[styles.quickPlaceholder, { flex: 1 }]}>Ask your wisdom…</Text>
-          <View style={styles.quickSendBtn}>
-            <Feather name="arrow-right" size={16} color={colors.accent} />
-          </View>
-        </TouchableOpacity>
+        <View style={styles.quickRow}>
+          <View style={styles.quickAddBtn}>
+              <Feather name="plus" size={18} color={colors.accent} />
+            </View>
+          <TouchableOpacity style={styles.quickRowMain} onPress={() => router.push("/(app)/ask")} activeOpacity={0.75}>
+            <Text style={[styles.quickPlaceholder, { flex: 1 }]}>Ask your wisdom…</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.quickMicBtn}
+            onPress={() => router.push("/(app)/ask?autoListen=1")}
+            activeOpacity={0.8}
+          >
+            <Feather name="mic" size={16} color={colors.accent} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Recent captures */}
@@ -112,7 +138,11 @@ export default function Home() {
 
       <NoteEditorModal
         visible={showEditor}
-        onClose={() => setShowEditor(false)}
+        autoStartDictation={autoStartDictation}
+        onClose={() => {
+          setShowEditor(false);
+          setAutoStartDictation(false);
+        }}
       />
     </ScrollView>
   );
@@ -158,6 +188,12 @@ const createStyles = (colors: ThemeColors, screenWidth: number) => {
       paddingVertical: 14,
       gap: 12,
     },
+    quickRowMain: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+    },
     quickDivider: {
       height: 1,
       backgroundColor: colors.surfaceMuted,
@@ -177,7 +213,7 @@ const createStyles = (colors: ThemeColors, screenWidth: number) => {
       fontSize: 15,
       color: colors.muted,
     },
-    quickSendBtn: {
+    quickMicBtn: {
       width: 30,
       height: 30,
       borderRadius: 15,

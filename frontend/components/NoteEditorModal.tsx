@@ -59,6 +59,7 @@ function appendVoiceText(previous: string, next: string): string {
 interface Props {
   visible: boolean;
   onClose: () => void;
+  autoStartDictation?: boolean;
   mode?: "create" | "edit";
   entryId?: string;
   initialTitle?: string;
@@ -71,6 +72,7 @@ interface Props {
 export default function NoteEditorModal({
   visible,
   onClose,
+  autoStartDictation = false,
   mode = "create",
   entryId,
   initialTitle = "",
@@ -92,6 +94,8 @@ export default function NoteEditorModal({
   const [bodyFocused, setBodyFocused] = useState(false);
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const hasAutoStartedVoice = useRef(false);
+  const voiceOwnedByModalRef = useRef(false);
   const contentSnapshot = useRef("");
   const voiceTranscriptRef = useRef("");
   const reloadEntries = useEntries((s) => s.load);
@@ -130,9 +134,17 @@ export default function NoteEditorModal({
     return () => anim.stop();
   }, [isListening]);
 
-  useSpeechRecognitionEvent("start", () => setIsListening(true));
-  useSpeechRecognitionEvent("end", () => setIsListening(false));
+  useSpeechRecognitionEvent("start", () => {
+    if (!visible || !voiceOwnedByModalRef.current) return;
+    setIsListening(true);
+  });
+  useSpeechRecognitionEvent("end", () => {
+    if (!voiceOwnedByModalRef.current) return;
+    setIsListening(false);
+    voiceOwnedByModalRef.current = false;
+  });
   useSpeechRecognitionEvent("result", (event: any) => {
+    if (!visible || !voiceOwnedByModalRef.current) return;
     const transcript = event?.results?.[0]?.transcript?.trim();
     if (!transcript) return;
     if (event?.isFinal) {
@@ -146,26 +158,46 @@ export default function NoteEditorModal({
     }
   });
   useSpeechRecognitionEvent("error", () => {
+    if (!voiceOwnedByModalRef.current) return;
     setContent(contentSnapshot.current);
     setIsListening(false);
     voiceTranscriptRef.current = "";
+    voiceOwnedByModalRef.current = false;
   });
 
   const startVoice = async () => {
     if (busy || isListening) return;
     const perm = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!perm.granted) {
+      voiceOwnedByModalRef.current = false;
       await showAlert({ title: "Microphone access needed", message: "Please allow microphone access." });
       return;
     }
+    voiceOwnedByModalRef.current = true;
     contentSnapshot.current = content;
     voiceTranscriptRef.current = "";
     ExpoSpeechRecognitionModule.start({ lang: "en-US", interimResults: true, continuous: true });
   };
 
+  useEffect(() => {
+    if (!visible) {
+      if (voiceOwnedByModalRef.current || isListening) {
+        ExpoSpeechRecognitionModule.stop();
+      }
+      voiceOwnedByModalRef.current = false;
+      setIsListening(false);
+      hasAutoStartedVoice.current = false;
+      return;
+    }
+    if (!autoStartDictation || hasAutoStartedVoice.current) return;
+    hasAutoStartedVoice.current = true;
+    startVoice();
+  }, [visible, autoStartDictation]);
+
   const acceptVoice = () => {
     voiceTranscriptRef.current = "";
     setIsListening(false);
+    voiceOwnedByModalRef.current = false;
     if (isListening) ExpoSpeechRecognitionModule.stop();
   };
 
@@ -173,6 +205,7 @@ export default function NoteEditorModal({
     setContent(contentSnapshot.current);
     voiceTranscriptRef.current = "";
     setIsListening(false);
+    voiceOwnedByModalRef.current = false;
     if (isListening) ExpoSpeechRecognitionModule.stop();
   };
 
@@ -266,9 +299,9 @@ export default function NoteEditorModal({
 
             {/* Save / Done */}
             <TouchableOpacity
-              style={[styles.saveBtn, busy && { opacity: 0.6 }]}
+              style={[styles.saveBtn, (!content.trim() && !attachments.length) && { opacity: 0.4 }]}
               onPress={save}
-              disabled={busy}
+              disabled={busy || (!content.trim() && !attachments.length)}
             >
               {busy ? (
                 <ActivityIndicator color="#fff" size="small" />
@@ -435,7 +468,7 @@ function createStyles(colors: typeof import("../theme").colors, height: number) 
 
     /* Scroll body */
     scroll: { flex: 1 },
-    scrollContent: { paddingHorizontal: 20, paddingBottom: 24 },
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 0 },
 
     titleInput: {
       fontSize: 24,
@@ -460,7 +493,7 @@ function createStyles(colors: typeof import("../theme").colors, height: number) 
       fontSize: 17,
       lineHeight: 26,
       color: colors.text,
-      minHeight: height - 225,
+      minHeight: height - 245,
       textAlignVertical: "top",
       outlineWidth: 0,
       outlineColor: "transparent",
@@ -485,7 +518,7 @@ function createStyles(colors: typeof import("../theme").colors, height: number) 
       borderWidth: 1,
       borderColor: colors.surfaceMuted,
     },
-    fileChipText: { flex: 1, color: colors.muted, fontSize: 13 },
+    fileChipText: { flex: 1, color: colors.accent, fontSize: 13 },
 
     /* Toolbar */
     toolbar: {

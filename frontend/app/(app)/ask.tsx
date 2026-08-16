@@ -17,6 +17,8 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
 } from "expo-speech-recognition";
+import { useLocalSearchParams } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 import { query, getUsage, type Source, type Usage } from "../../lib/api";
 import { STARTER_QUESTIONS } from "../../lib/constants";
 import { getProviderKeys } from "../../lib/secureStore";
@@ -27,6 +29,8 @@ import { useTheme } from "../theme-context";
 import { fonts } from "../../theme";
 
 export default function Ask() {
+  const isFocused = useIsFocused();
+  const { autoListen } = useLocalSearchParams<{ autoListen?: string }>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,6 +43,7 @@ export default function Ask() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const inputSnapshot = useRef("");
   const voiceTranscriptRef = useRef("");
+  const voiceOwnedByAskRef = useRef(false);
   const { entries, loading: entriesLoading, load } = useEntries();
 
   useEffect(() => {
@@ -62,11 +67,18 @@ export default function Ask() {
   }, []);
 
   const startNewAsk = useCallback(() => {
+    if (voiceOwnedByAskRef.current || isListening) {
+      ExpoSpeechRecognitionModule.stop();
+    }
+    voiceOwnedByAskRef.current = false;
+    voiceTranscriptRef.current = "";
+    setIsListening(false);
     setMessages([]);
     setInput("");
+    setInputHeight(40);
     setLoading(false);
     setSelectedSource(null);
-  }, []);
+  }, [isListening]);
 
   useEffect(() => {
     if (!isListening) {
@@ -84,9 +96,17 @@ export default function Ask() {
     return () => animation.stop();
   }, [isListening, pulseAnim]);
 
-  useSpeechRecognitionEvent("start", () => setIsListening(true));
-  useSpeechRecognitionEvent("end", () => setIsListening(false));
+  useSpeechRecognitionEvent("start", () => {
+    if (!isFocused || !voiceOwnedByAskRef.current) return;
+    setIsListening(true);
+  });
+  useSpeechRecognitionEvent("end", () => {
+    if (!voiceOwnedByAskRef.current) return;
+    setIsListening(false);
+    voiceOwnedByAskRef.current = false;
+  });
   useSpeechRecognitionEvent("result", (event: any) => {
+    if (!isFocused || !voiceOwnedByAskRef.current) return;
     const transcript = event?.results?.[0]?.transcript?.trim();
     if (!transcript) return;
     if (event?.isFinal) {
@@ -100,23 +120,46 @@ export default function Ask() {
     }
   });
   useSpeechRecognitionEvent("error", () => {
+    if (!voiceOwnedByAskRef.current) return;
     setInput(inputSnapshot.current);
     setIsListening(false);
     voiceTranscriptRef.current = "";
+    voiceOwnedByAskRef.current = false;
   });
 
   const startVoiceInput = async () => {
     if (loading || isListening) return;
     const permissionResult = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!permissionResult.granted) return;
+    voiceOwnedByAskRef.current = true;
     inputSnapshot.current = input;
     voiceTranscriptRef.current = "";
     ExpoSpeechRecognitionModule.start({ lang: "en-US", interimResults: true, continuous: true });
   };
 
+  useEffect(() => {
+    if (autoListen !== "1") return;
+    if (!isFocused) return;
+    if (loading || isListening) return;
+    startVoiceInput();
+    // Intentionally run only on route param changes to avoid restarting while listening.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoListen, isFocused]);
+
+  useEffect(() => {
+    if (isFocused) return;
+    if (voiceOwnedByAskRef.current || isListening) {
+      ExpoSpeechRecognitionModule.stop();
+      voiceOwnedByAskRef.current = false;
+      setIsListening(false);
+      voiceTranscriptRef.current = "";
+    }
+  }, [isFocused, isListening]);
+
   const acceptVoiceCandidate = () => {
     voiceTranscriptRef.current = "";
     setIsListening(false);
+    voiceOwnedByAskRef.current = false;
     if (isListening) ExpoSpeechRecognitionModule.stop();
   };
 
@@ -124,6 +167,7 @@ export default function Ask() {
     setInput(inputSnapshot.current);
     voiceTranscriptRef.current = "";
     setIsListening(false);
+    voiceOwnedByAskRef.current = false;
     if (isListening) ExpoSpeechRecognitionModule.stop();
   };
 
@@ -246,12 +290,18 @@ export default function Ask() {
       )}
 
       <View style={styles.bar}>
-        {/* {messages.length > 0 && (
-          <TouchableOpacity style={styles.newAskButton} onPress={startNewAsk}>
-            <Text style={styles.newAskText}>New ask</Text>
-          </TouchableOpacity>
-        )} */}
         <View style={styles.composeRow}>
+          {messages.length > 0 ? (
+            <TouchableOpacity
+              style={styles.composeNewAskBtn}
+              onPress={startNewAsk}
+              activeOpacity={0.8}
+              accessibilityLabel="Start a new ask"
+            >
+              <Feather name="plus" size={18} color={colors.accent} />
+            </TouchableOpacity>
+          ) : null}
+
           <TextInput
             style={[styles.composeInput, { height: Math.max(40, inputHeight) }]}
             placeholder={isListening ? "Listening…" : "Ask your wisdom..."}
@@ -372,6 +422,16 @@ function createStyles(colors: typeof import("../../theme").colors) {
       alignItems: "flex-end",
       gap: 8,
     },
+    composeNewAskBtn: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: colors.accent,
+      backgroundColor: colors.accentSoft,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     composeInput: {
       flex: 1,
       backgroundColor: colors.bg,
@@ -427,6 +487,8 @@ function createStyles(colors: typeof import("../../theme").colors) {
     borderBottomWidth: 1,
     borderBottomColor: colors.surfaceMuted,
     backgroundColor: colors.surface,
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   backButton: { marginRight: 12, paddingVertical: 6, paddingHorizontal: 10 },
   backText: { color: colors.accent, fontWeight: "700", fontSize: 16 },
