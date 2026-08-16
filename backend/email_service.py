@@ -173,18 +173,17 @@ This is an automated message. Please do not reply to this email.
         except Exception as e:
             print(f"AWS SES error (falling back): {e}")
 
-    # Option 3: Log to console (development/fallback)
+    # Option 3: Log to console (development/fallback only).
+    # This is not an actual email send.
     try:
         print(f"\n{'='*60}")
-        print("ACCOUNT DELETION EMAIL (would be sent in production)")
+        print("ACCOUNT DELETION EMAIL (not sent, console fallback)")
         print(f"{'='*60}")
         print(f"To: {email}")
         print(f"Subject: {subject}")
         print(f"\n{text_body}")
         print(f"{'='*60}\n")
-
-        # Return True since we logged it (in production, this would actually send)
-        return True
+        return False
     except Exception as e:
         print(f"Failed to send account deletion email: {e}")
         return False

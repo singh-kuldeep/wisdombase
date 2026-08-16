@@ -683,18 +683,23 @@ def delete_account(user_id: str = CurrentUser):
             "display_name": None,
         }).execute()
 
-        # Send confirmation email if we have the email address
+        # Send confirmation email if we have the email address.
+        # Deletion should still succeed even if email sending fails.
+        email_sent = False
         if user_email:
             try:
-                _send_account_deletion_email(user_email)
+                email_sent = bool(_send_account_deletion_email(user_email))
             except Exception as e:
-                # Don't fail the deletion if email fails
                 print(f"Failed to send deletion confirmation email: {e}")
 
         return {
             "deleted": True,
-            "message": "Your account will be deleted and you will receive a confirmation email. All your data has been permanently removed.",
-            "email_sent": bool(user_email)
+            "message": (
+                "Your account was deleted and a confirmation email has been sent."
+                if email_sent
+                else "Your account was deleted. We could not send a confirmation email right now."
+            ),
+            "email_sent": email_sent
         }
     except Exception as e:
         raise HTTPException(
