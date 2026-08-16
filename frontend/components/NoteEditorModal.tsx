@@ -98,6 +98,7 @@ export default function NoteEditorModal({
   const { colors } = useTheme();
   const { height } = useWindowDimensions();
   const styles = useMemo(() => createStyles(colors, height), [colors, height]);
+  const initialTagsKey = useMemo(() => (initialTags ?? []).join("\u0001"), [initialTags]);
 
   // Reset when opened
   useEffect(() => {
@@ -110,7 +111,7 @@ export default function NoteEditorModal({
       setTitleFocused(false);
       setBodyFocused(false);
     }
-  }, [visible, initialTitle, initialContent, initialTags]);
+  }, [visible, initialTitle, initialContent, initialTagsKey]);
 
   // Pulse animation while listening
   useEffect(() => {

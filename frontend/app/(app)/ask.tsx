@@ -208,7 +208,7 @@ export default function Ask() {
               Grow smarter answers from your own notes and reflections. Get focused replies that feel like your own memory.
             </Text>
           </View> */}
-          <Text style={styles.emptyTitle}>Ask your own thinking</Text>
+          <Text style={styles.emptyTitle}>Ask your own wisdom</Text>
           <Text style={styles.emptyBody}>
             Tap a question to start — these draw on built-in wisdom, so you can ask
             before adding anything of your own.
@@ -254,7 +254,7 @@ export default function Ask() {
         <View style={styles.composeRow}>
           <TextInput
             style={[styles.composeInput, { height: Math.max(40, inputHeight) }]}
-            placeholder={isListening ? "Listening…" : "Ask a question…"}
+            placeholder={isListening ? "Listening…" : "Ask your wisdom..."}
             placeholderTextColor={isListening ? colors.accent : colors.muted}
             value={input}
             onChangeText={setInput}

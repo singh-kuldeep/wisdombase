@@ -230,7 +230,7 @@ export default function Browse() {
         </TouchableOpacity>
 
         <View style={styles.titleBlock}>
-          <Text style={styles.headerTitle}>All Entries</Text>
+          <Text style={styles.headerTitle}>Wisdoms</Text>
           <Text style={styles.summary}>{filtered.length} notes</Text>
         </View>
 
@@ -334,7 +334,7 @@ export default function Browse() {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No entries yet</Text>
+              <Text style={styles.emptyTitle}>No wisdom yet</Text>
               <Text style={styles.empty}>Capture a thought to start building your collection.</Text>
             </View>
           ) : null

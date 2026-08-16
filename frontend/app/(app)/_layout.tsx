@@ -1,18 +1,19 @@
-import { useEffect, type ComponentProps } from "react";
-import { Tabs } from "expo-router";
+import { type ComponentProps } from "react";
+import { Tabs, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Image, TouchableOpacity, Text, View } from "react-native";
-import { seedGeneric } from "../../lib/api";
-import { useAuth } from "../../stores/authStore";
-import { useEntries } from "../../stores/entryStore";
 import { useTheme } from "../theme-context";
 
 function HeaderLogo() {
   const { colors } = useTheme();
+  const router = useRouter();
 
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 7 }}>
+    <TouchableOpacity
+      style={{ flexDirection: "row", alignItems: "center", gap: 7 }}
+      onPress={() => router.replace("/(app)/home")}
+      activeOpacity={0.8}
+    >
       <Image
         source={require("../../assets/icon.png")}
         style={{ width: 28, height: 28, borderRadius: 6 }}
@@ -21,7 +22,7 @@ function HeaderLogo() {
       <Text style={{ fontSize: 17, fontWeight: "800", color: colors.text, letterSpacing: -0.3 }}>
         Wisdom<Text style={{ fontWeight: "400" }}>Base</Text>
       </Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -91,27 +92,5 @@ function AppLayoutContent() {
 }
 
 export default function AppLayout() {
-  const userId = useAuth((s) => s.session?.user.id);
-  const reloadEntries = useEntries((s) => s.load);
-
-  useEffect(() => {
-    if (!userId) return;
-    const flag = `generic_seeded_${userId}`;
-    let cancelled = false;
-    (async () => {
-      try {
-        if (await AsyncStorage.getItem(flag)) return;
-        const res = await seedGeneric();
-        await AsyncStorage.setItem(flag, "1");
-        if (!cancelled && res.seeded > 0) reloadEntries();
-      } catch {
-        // Non-blocking: app works fine without the seed; retry next launch.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
-
   return <AppLayoutContent />;
 }

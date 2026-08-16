@@ -10,7 +10,7 @@ Endpoints:
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -18,7 +18,6 @@ import config
 import file_extract
 import llm
 import rag
-import seed_data
 import web_extract
 from auth import CurrentUser
 from chunker import chunk_text
@@ -363,34 +362,8 @@ async def ingest_files(
 
 @app.post("/seed-generic")
 def seed_generic(user_id: str = CurrentUser):
-    """Seed curated generic wisdom entries for the user, once (idempotent)."""
-    supabase = get_supabase()
-
-    existing = (
-        supabase.table("entries")
-        .select("id")
-        .eq("user_id", user_id)
-        .eq("group_name", seed_data.GENERIC_GROUP)
-        .limit(1)
-        .execute()
-    )
-    if existing.data:
-        return {"seeded": 0, "already_seeded": True}
-
-    seeded = 0
-    for item in seed_data.GENERIC_ENTRIES:
-        _store_entry(
-            supabase,
-            user_id,
-            content=item["content"],
-            title=item["title"],
-            source="seed",
-            group=seed_data.GENERIC_GROUP,
-            tags=item.get("tags", []),
-        )
-        seeded += 1
-
-    return {"seeded": seeded, "already_seeded": False}
+    """Generic seeding is disabled; this endpoint is kept for compatibility."""
+    return {"seeded": 0, "already_seeded": True}
 
 
 def _get_free_used(supabase, user_id: str) -> int:
