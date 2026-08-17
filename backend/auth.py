@@ -2,7 +2,8 @@
 
 Validates the Supabase access token sent in the Authorization header by asking
 Supabase Auth to resolve the token to a user. Returns the user id, which scopes
-all database access.
+all database access. 
+One more line
 """
 
 from fastapi import Depends, Header, HTTPException, status
