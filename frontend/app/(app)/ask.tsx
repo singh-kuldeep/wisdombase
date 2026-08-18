@@ -70,6 +70,9 @@ export default function Ask() {
     if (voiceOwnedByAskRef.current || isListening) {
       ExpoSpeechRecognitionModule.stop();
     }
+    if (Platform.OS === "web" && typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
     voiceOwnedByAskRef.current = false;
     voiceTranscriptRef.current = "";
     setIsListening(false);
@@ -178,6 +181,9 @@ export default function Ask() {
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     const next = [...messages, { role: "user" as const, content: question }];
     setMessages(next);
+    if (Platform.OS === "web" && typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
     setInput("");
     setLoading(true);
 

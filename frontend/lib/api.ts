@@ -156,6 +156,20 @@ export function fetchEntries(): Promise<{ entries: Entry[] }> {
   return request("/entries", { method: "GET" });
 }
 
+export function fetchEntriesPage(input: {
+  offset: number;
+  limit: number;
+  group?: string;
+  q?: string;
+}): Promise<{ entries: Entry[]; total_count: number; page: { offset: number; limit: number; has_more: boolean } }> {
+  const params = new URLSearchParams();
+  params.set("offset", String(input.offset));
+  params.set("limit", String(input.limit));
+  if (input.group) params.set("group", input.group);
+  if (input.q?.trim()) params.set("q", input.q.trim());
+  return request(`/entries?${params.toString()}`, { method: "GET" });
+}
+
 export function seedGeneric(): Promise<{ seeded: number; already_seeded: boolean }> {
   return request("/seed-generic", { method: "POST" });
 }
