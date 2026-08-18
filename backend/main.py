@@ -553,17 +553,64 @@ def refresh_memory(req: MemoryRefreshRequest, user_id: str = CurrentUser):
 
 
 @app.get("/entries")
-def list_entries(group: Optional[str] = None, user_id: str = CurrentUser):
+def list_entries(
+    group: Optional[str] = None,
+    offset: int = 0,
+    limit: Optional[int] = None,
+    q: Optional[str] = None,
+    user_id: str = CurrentUser,
+):
     supabase = get_supabase()
-    q = (
+    entries_q = (
         supabase.table("entries")
         .select("id, title, content, source, group_name, tags, created_at")
         .eq("user_id", user_id)
     )
     if group:
-        q = q.eq("group_name", group)
-    resp = q.order("created_at", desc=True).execute()
-    return {"entries": resp.data or []}
+        entries_q = entries_q.eq("group_name", group)
+
+    search = (q or "").strip()
+    if search:
+        # Search on title/content using ILIKE so results include entries not yet loaded in the client.
+        search_like = search.replace("%", "").replace(",", " ")
+        entries_q = entries_q.or_(f"title.ilike.%{search_like}%,content.ilike.%{search_like}%")
+
+    # Backward compatibility: if limit is not provided, keep returning all rows.
+    if limit is None:
+        resp = entries_q.order("created_at", desc=True).execute()
+        return {"entries": resp.data or []}
+
+    safe_offset = max(0, int(offset))
+    safe_limit = max(1, min(int(limit), 100))
+
+    count_q = supabase.table("entries").select("id", count="exact").eq("user_id", user_id)
+    if group:
+        count_q = count_q.eq("group_name", group)
+    if search:
+        search_like = search.replace("%", "").replace(",", " ")
+        count_q = count_q.or_(f"title.ilike.%{search_like}%,content.ilike.%{search_like}%")
+    count_resp = count_q.limit(1).execute()
+    total_count = count_resp.count or 0
+
+    # Fetch one extra row to determine whether another page exists.
+    resp = (
+        entries_q.order("created_at", desc=True)
+        .range(safe_offset, safe_offset + safe_limit)
+        .execute()
+    )
+    rows = resp.data or []
+    has_more = len(rows) > safe_limit
+    entries = rows[:safe_limit]
+
+    return {
+        "entries": entries,
+        "total_count": total_count,
+        "page": {
+            "offset": safe_offset,
+            "limit": safe_limit,
+            "has_more": has_more,
+        },
+    }
 
 
 @app.get("/entries/{entry_id}")

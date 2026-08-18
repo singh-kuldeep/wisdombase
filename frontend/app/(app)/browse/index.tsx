@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Keyboard,
   Platform,
   RefreshControl,
@@ -17,8 +18,7 @@ import { Feather } from "@expo/vector-icons";
 import { useCustomAlert } from "../../../components/CustomAlert";
 import EntryCard from "../../../components/EntryCard";
 import NoteEditorModal from "../../../components/NoteEditorModal";
-import { deleteEntries, type Entry } from "../../../lib/api";
-import { useEntries } from "../../../stores/entryStore";
+import { deleteEntries, fetchEntriesPage, type Entry } from "../../../lib/api";
 import { useTheme } from "../../theme-context";
 import { fonts } from "../../../theme";
 
@@ -30,10 +30,17 @@ type BrowseSection = {
 type SortMode = "date-desc" | "date-asc" | "title-asc";
 
 export default function Browse() {
+  const PAGE_SIZE = 5;
   const router = useRouter();
   const { showAlert, showConfirm } = useCustomAlert();
-  const { entries, loading, load } = useEntries();
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [nextOffset, setNextOffset] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [searchActive, setSearchActive] = useState(false);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
@@ -46,8 +53,58 @@ export default function Browse() {
   const searchInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
-    load();
-  }, []);
+    const id = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  const loadInitialPage = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { entries: pageEntries, page, total_count } = await fetchEntriesPage({
+        offset: 0,
+        limit: PAGE_SIZE,
+        group: groupFilter ?? undefined,
+        q: debouncedSearch,
+      });
+      setEntries(pageEntries);
+      setNextOffset(pageEntries.length);
+      setHasMore(page?.has_more ?? pageEntries.length >= PAGE_SIZE);
+      setTotalCount(total_count ?? pageEntries.length);
+    } catch (error) {
+      await showAlert({ title: "Load failed", message: (error as Error).message });
+    } finally {
+      setLoading(false);
+    }
+  }, [showAlert, groupFilter, debouncedSearch]);
+
+  const loadMore = useCallback(async () => {
+    if (loading || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    try {
+      const { entries: pageEntries, page, total_count } = await fetchEntriesPage({
+        offset: nextOffset,
+        limit: PAGE_SIZE,
+        group: groupFilter ?? undefined,
+        q: debouncedSearch,
+      });
+      setEntries((prev) => [...prev, ...pageEntries]);
+      setNextOffset((prev) => prev + pageEntries.length);
+      setHasMore(page?.has_more ?? pageEntries.length >= PAGE_SIZE);
+      setTotalCount(total_count ?? 0);
+    } catch (error) {
+      await showAlert({ title: "Load more failed", message: (error as Error).message });
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loading, loadingMore, nextOffset, showAlert, groupFilter, debouncedSearch]);
+
+  const refresh = useCallback(async () => {
+    await loadInitialPage();
+  }, [loadInitialPage]);
+
+  useEffect(() => {
+    loadInitialPage();
+  }, [loadInitialPage]);
 
   useEffect(() => {
     if (searchActive) {
@@ -66,17 +123,9 @@ export default function Browse() {
     return Array.from(set);
   }, [entries]);
 
-  const filtered = useMemo(() => {
-    let list = entries;
-    if (groupFilter) list = list.filter((entry) => entry.group_name === groupFilter);
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((entry) =>
-        `${entry.title ?? ""} ${entry.content} ${(entry.tags ?? []).join(" ")}`.toLowerCase().includes(q),
-      );
-    }
-    return list;
-  }, [entries, search, groupFilter]);
+  const filtered = entries;
+  const showInitialLoader = loading && entries.length === 0;
+  const showSearchLoader = loading && debouncedSearch.length > 0;
 
   const sections = useMemo<BrowseSection[]>(() => {
     const buckets = new Map<string, Entry[]>();
@@ -141,7 +190,7 @@ export default function Browse() {
       await deleteEntries(selectedIds);
       setSelectedIds([]);
       setSelectionMode(false);
-      load();
+      await refresh();
     } catch (error) {
       await showAlert({ title: "Delete failed", message: (error as Error).message });
     } finally {
@@ -231,7 +280,7 @@ export default function Browse() {
 
         <View style={styles.titleBlock}>
           <Text style={styles.headerTitle}>Wisdoms</Text>
-          <Text style={styles.summary}>{filtered.length} notes</Text>
+          <Text style={styles.summary}>{totalCount} notes</Text>
         </View>
 
         <View style={styles.toolbarActions}>
@@ -330,9 +379,34 @@ export default function Browse() {
         renderSectionHeader={({ section }) => <Text style={styles.sectionLabel}>{section.title}</Text>}
         stickySectionHeadersEnabled={false}
         contentContainerStyle={styles.list}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={colors.accent} />}
+        ListHeaderComponent={
+          showSearchLoader ? (
+            <View style={styles.searchLoadingRow}>
+              <ActivityIndicator color={colors.accent} size="small" />
+              <Text style={styles.searchLoadingText}>Searching wisdom…</Text>
+            </View>
+          ) : null
+        }
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={colors.accent} />}
+        onEndReachedThreshold={0.35}
+        onEndReached={() => {
+          void loadMore();
+        }}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.loadMoreRow}>
+              <ActivityIndicator color={colors.accent} size="small" />
+              <Text style={styles.loadMoreText}>Loading more wisdom…</Text>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
-          !loading ? (
+          showInitialLoader ? (
+            <View style={styles.initialLoadingWrap}>
+              <ActivityIndicator color={colors.accent} size="large" />
+              <Text style={styles.initialLoadingText}>Loading wisdom…</Text>
+            </View>
+          ) : !loading ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No wisdom yet</Text>
               <Text style={styles.empty}>Capture a thought to start building your collection.</Text>
@@ -478,6 +552,9 @@ export default function Browse() {
       <NoteEditorModal
         visible={showEditor}
         onClose={() => setShowEditor(false)}
+        onSaved={() => {
+          void refresh();
+        }}
       />
     </View>
   );
@@ -642,6 +719,42 @@ function createStyles(colors: typeof import("../../../theme").colors) {
     emptyState: { paddingTop: 56, alignItems: "center" },
     emptyTitle: { color: colors.text, fontSize: 22, fontWeight: "800", marginBottom: 8 },
     empty: { textAlign: "center", color: colors.muted, fontFamily: fonts.serif, fontSize: 16, paddingHorizontal: 30 },
+    loadMoreRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      paddingTop: 8,
+      paddingBottom: 20,
+    },
+    loadMoreText: {
+      color: colors.muted,
+      fontSize: 13,
+      fontWeight: "600",
+    },
+    initialLoadingWrap: {
+      paddingTop: 72,
+      alignItems: "center",
+      gap: 12,
+    },
+    initialLoadingText: {
+      color: colors.muted,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    searchLoadingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 10,
+      paddingTop: 2,
+      paddingBottom: 10,
+    },
+    searchLoadingText: {
+      color: colors.muted,
+      fontSize: 13,
+      fontWeight: "600",
+    },
     disabled: { opacity: 0.5 },
     fab: {
       position: "absolute",
