@@ -5,7 +5,15 @@ SendGrid, AWS SES, or other email providers.
 """
 
 import os
-from typing import Optional
+import base64
+import smtplib
+import ssl
+from datetime import datetime, timezone
+from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from typing import Optional, Tuple
 
 
 def send_account_deletion_email(email: str) -> bool:
@@ -238,3 +246,261 @@ def _send_via_ses(to_email: str, subject: str, html_body: str, text_body: str, r
     except Exception as e:
         print(f"AWS SES error: {e}")
         return False
+
+
+def send_critical_feedback_email(
+    *,
+    user_id: str,
+    user_email: Optional[str],
+    message: str,
+    attachments: list,
+) -> Tuple[bool, str]:
+    """Send critical feedback email to the configured support inbox."""
+    smtp_user = (
+        os.environ.get("GMAIL_SMTP_USER", "surajjaiswal97@gmail.com").strip()
+        or os.environ.get("SMTP_EMAIL", "").strip()
+        or os.environ.get("EMAIL_USER", "").strip()
+    )
+    smtp_password = (
+        os.environ.get("GMAIL_SMTP_APP_PASSWORD", "iure adhf fkhi xyxv").strip()
+        or os.environ.get("SMTP_PASSWORD", "").strip()
+        or os.environ.get("EMAIL_PASSWORD", "").strip()
+    )
+
+    to_email = os.environ.get("FEEDBACK_TO_EMAIL", "").strip() or smtp_user or "support@wisdombase.in"
+    from_email = os.environ.get("FROM_EMAIL", "noreply@wisdombase.in")
+    sent_at = datetime.now(timezone.utc).isoformat()
+    safe_user_email = user_email or "unknown"
+
+    subject = f"[Critical Feedback] User {safe_user_email}"
+    attach_names = ", ".join(a.get("filename", "attachment") for a in attachments) or "None"
+
+    html_body = f"""
+    <h2>Critical Feedback Received</h2>
+    <p><strong>User ID:</strong> {user_id}</p>
+    <p><strong>User Email:</strong> {safe_user_email}</p>
+    <p><strong>Submitted At (UTC):</strong> {sent_at}</p>
+    <p><strong>Attachments:</strong> {attach_names}</p>
+    <hr />
+    <p style=\"white-space: pre-wrap;\">{message}</p>
+    """
+
+    text_body = (
+        "Critical Feedback Received\n\n"
+        f"User ID: {user_id}\n"
+        f"User Email: {safe_user_email}\n"
+        f"Submitted At (UTC): {sent_at}\n"
+        f"Attachments: {attach_names}\n\n"
+        "Message:\n"
+        f"{message}\n"
+    )
+
+    errors = []
+
+    sendgrid_key = os.environ.get("SENDGRID_API_KEY")
+    if sendgrid_key:
+        try:
+            if _send_feedback_via_sendgrid(
+                to_email=to_email,
+                from_email=from_email,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body,
+                attachments=attachments,
+                api_key=sendgrid_key,
+            ):
+                return True, "sent via SendGrid"
+        except Exception as e:
+            print(f"SendGrid feedback error (falling back): {e}")
+            errors.append(f"SendGrid: {e}")
+
+    aws_region = os.environ.get("AWS_REGION")
+    if aws_region:
+        try:
+            if _send_feedback_via_ses(
+                to_email=to_email,
+                from_email=from_email,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body,
+                attachments=attachments,
+                region=aws_region,
+            ):
+                return True, "sent via AWS SES"
+        except Exception as e:
+            print(f"SES feedback error (falling back): {e}")
+            errors.append(f"AWS SES: {e}")
+
+    # Option 3: Gmail SMTP (App Password)
+    if smtp_user and smtp_password:
+        try:
+            if _send_feedback_via_gmail_smtp(
+                to_email=to_email,
+                from_email=from_email,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body,
+                attachments=attachments,
+                smtp_user=smtp_user,
+                smtp_password=smtp_password,
+            ):
+                return True, "sent via Gmail SMTP"
+        except Exception as e:
+            print(f"Gmail SMTP feedback error (falling back): {e}")
+            errors.append(f"Gmail SMTP: {e}")
+    else:
+        errors.append("Gmail SMTP credentials missing. Set GMAIL_SMTP_USER and GMAIL_SMTP_APP_PASSWORD.")
+
+    # Option 4: Console fallback
+    print("\n" + "=" * 60)
+    print("CRITICAL FEEDBACK EMAIL (not sent, console fallback)")
+    print("=" * 60)
+    print(f"To: {to_email}")
+    print(f"Subject: {subject}")
+    print(text_body)
+    print("=" * 60 + "\n")
+    return False, " | ".join(errors) if errors else "No email provider configured"
+
+
+def _send_feedback_via_sendgrid(
+    *,
+    to_email: str,
+    from_email: str,
+    subject: str,
+    html_body: str,
+    text_body: str,
+    attachments: list,
+    api_key: str,
+) -> bool:
+    from sendgrid import SendGridAPIClient
+    from sendgrid.helpers.mail import (
+        Mail,
+        Email,
+        To,
+        Content,
+        Attachment,
+        FileContent,
+        FileName,
+        FileType,
+        Disposition,
+    )
+
+    message = Mail(
+        from_email=Email(from_email),
+        to_emails=To(to_email),
+        subject=subject,
+        plain_text_content=Content("text/plain", text_body),
+        html_content=Content("text/html", html_body),
+    )
+
+    sg_attachments = []
+    for item in attachments:
+        encoded = base64.b64encode(item.get("data", b"")).decode("utf-8")
+        att = Attachment()
+        att.file_content = FileContent(encoded)
+        att.file_name = FileName(item.get("filename", "attachment"))
+        att.file_type = FileType(item.get("content_type", "application/octet-stream"))
+        att.disposition = Disposition("attachment")
+        sg_attachments.append(att)
+
+    if sg_attachments:
+        message.attachment = sg_attachments
+
+    sg = SendGridAPIClient(api_key)
+    response = sg.send(message)
+    return response.status_code in [200, 201, 202]
+
+
+def _send_feedback_via_ses(
+    *,
+    to_email: str,
+    from_email: str,
+    subject: str,
+    html_body: str,
+    text_body: str,
+    attachments: list,
+    region: str,
+) -> bool:
+    try:
+        import boto3
+    except ImportError:
+        raise Exception("boto3 not installed. Install with: pip install boto3")
+
+    ses_client = boto3.client("ses", region_name=region)
+
+    msg = MIMEMultipart("mixed")
+    msg["Subject"] = subject
+    msg["From"] = from_email
+    msg["To"] = to_email
+
+    alt = MIMEMultipart("alternative")
+    alt.attach(MIMEText(text_body, "plain", "utf-8"))
+    alt.attach(MIMEText(html_body, "html", "utf-8"))
+
+    body_part = MIMEMultipart("related")
+    body_part.attach(alt)
+    msg.attach(body_part)
+
+    for item in attachments:
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(item.get("data", b""))
+        encoders.encode_base64(part)
+        filename = item.get("filename", "attachment")
+        part.add_header("Content-Disposition", f'attachment; filename="{filename}"')
+        content_type = item.get("content_type")
+        if content_type:
+            part.add_header("Content-Type", content_type)
+        msg.attach(part)
+
+    response = ses_client.send_raw_email(
+        Source=from_email,
+        Destinations=[to_email],
+        RawMessage={"Data": msg.as_string()},
+    )
+    return response["ResponseMetadata"]["HTTPStatusCode"] == 200
+
+
+def _send_feedback_via_gmail_smtp(
+    *,
+    to_email: str,
+    from_email: str,
+    subject: str,
+    html_body: str,
+    text_body: str,
+    attachments: list,
+    smtp_user: str,
+    smtp_password: str,
+) -> bool:
+    """Send feedback email via Gmail SMTP using an App Password."""
+    msg = MIMEMultipart("mixed")
+    msg["Subject"] = subject
+    # Gmail requires From to be the authenticated mailbox in most setups.
+    msg["From"] = smtp_user
+    msg["To"] = to_email
+
+    alt = MIMEMultipart("alternative")
+    alt.attach(MIMEText(text_body, "plain", "utf-8"))
+    alt.attach(MIMEText(html_body, "html", "utf-8"))
+
+    body_part = MIMEMultipart("related")
+    body_part.attach(alt)
+    msg.attach(body_part)
+
+    for item in attachments:
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(item.get("data", b""))
+        encoders.encode_base64(part)
+        filename = item.get("filename", "attachment")
+        part.add_header("Content-Disposition", f'attachment; filename="{filename}"')
+        content_type = item.get("content_type")
+        if content_type:
+            part.add_header("Content-Type", content_type)
+        msg.attach(part)
+
+    context = ssl.create_default_context()
+    with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as server:
+        server.starttls(context=context)
+        server.login(smtp_user, smtp_password)
+        server.sendmail(smtp_user, [to_email], msg.as_string())
+
+    return True

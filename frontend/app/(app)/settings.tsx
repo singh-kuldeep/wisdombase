@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
 import { useRouter } from "expo-router";
 import { useCustomAlert } from "../../components/CustomAlert";
 import {
@@ -18,7 +19,7 @@ import {
   type ProviderId,
   type ProviderKey,
 } from "../../lib/secureStore";
-import { getMemory, refreshMemory, deleteAccount } from "../../lib/api";
+import { getMemory, refreshMemory, deleteAccount, submitCriticalFeedback, type PickedFile } from "../../lib/api";
 import { useAuth } from "../../stores/authStore";
 import { useTheme } from "../theme-context";
 import { fonts } from "../../theme";
@@ -33,6 +34,9 @@ export default function Settings() {
   const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showFinalDeleteModal, setShowFinalDeleteModal] = useState(false);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [feedbackFiles, setFeedbackFiles] = useState<PickedFile[]>([]);
+  const [sendingFeedback, setSendingFeedback] = useState(false);
   const { colors } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
 
@@ -124,10 +128,94 @@ export default function Settings() {
     });
   };
 
+  const pickFeedbackFiles = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      multiple: true,
+      copyToCacheDirectory: true,
+      type: ["*/*"],
+    });
+    if (result.canceled) return;
+    const assets = Array.isArray(result.assets) ? result.assets : [];
+    if (!assets.length) return;
+
+    setFeedbackFiles((prev) => {
+      const seen = new Set(prev.map((f) => f.uri));
+      const next = assets
+        .filter((a) => !!a.uri && !!a.name && !seen.has(a.uri))
+        .map((a) => ({ uri: a.uri, name: a.name, mimeType: a.mimeType }));
+      return [...prev, ...next].slice(0, 5);
+    });
+  };
+
+  const sendFeedback = async () => {
+    const message = feedbackText.trim();
+    if (!message) {
+      await showAlert({ title: "Message required", message: "Please describe the critical feedback." });
+      return;
+    }
+    setSendingFeedback(true);
+    try {
+      const res = await submitCriticalFeedback({ message, assets: feedbackFiles });
+      await showAlert({ title: "Feedback sent", message: res.message });
+      setFeedbackText("");
+      setFeedbackFiles([]);
+    } catch (e) {
+      await showAlert({ title: "Could not send feedback", message: (e as Error).message });
+    } finally {
+      setSendingFeedback(false);
+    }
+  };
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.label}>Signed in as</Text>
       <Text style={styles.value}>{session?.user.email ?? session?.user.phone}</Text>
+
+      <Text style={[styles.label, styles.section]}>Critical Feedback</Text>
+      <Text style={styles.hint}>
+        Report urgent issues directly to our team. Add details and optional attachments.
+      </Text>
+      <TextInput
+        style={styles.feedbackInput}
+        placeholder="Describe the issue, impact, and what you expected..."
+        placeholderTextColor={colors.muted}
+        multiline
+        value={feedbackText}
+        onChangeText={setFeedbackText}
+      />
+      
+      <View style={styles.feedbackRow}>
+        <TouchableOpacity
+          style={[styles.feedbackBtn, sendingFeedback && styles.disabled]}
+          onPress={pickFeedbackFiles}
+          disabled={sendingFeedback}
+        >
+          <Text style={styles.feedbackBtnText}>Attach files</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.primary, styles.feedbackSendBtn, sendingFeedback && styles.disabled]}
+          onPress={sendFeedback}
+          disabled={sendingFeedback}
+        >
+          {sendingFeedback ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryText}>Send feedback</Text>}
+        </TouchableOpacity>
+      </View>
+
+      {feedbackFiles.length ? (
+        <View style={styles.feedbackFilesList}>
+          {feedbackFiles.map((f) => (
+            <View key={f.uri} style={styles.feedbackFileItem}>
+              <Text style={styles.feedbackFileText} numberOfLines={1}>{f.name}</Text>
+              <TouchableOpacity
+                onPress={() => setFeedbackFiles((prev) => prev.filter((x) => x.uri !== f.uri))}
+                hitSlop={8}
+              >
+                <Text style={styles.feedbackFileRemove}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       <Text style={[styles.label, styles.section]}>AI provider keys</Text>
       <Text style={styles.hint}>
@@ -222,6 +310,7 @@ export default function Settings() {
       >
         <Text style={styles.signOutText}>Sign out</Text>
       </TouchableOpacity>
+
 
       <Text style={[styles.label, styles.section]}>Danger Zone</Text>
       <Text style={styles.hint}>
@@ -362,6 +451,67 @@ function createStyles(colors: typeof import("../../theme").colors) {
     marginBottom: 8,
   },
   secondaryBtnText: { color: colors.accent, fontWeight: "700" },
+  feedbackInput: {
+    backgroundColor: colors.surface,
+    borderColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    minHeight: 120,
+    color: colors.text,
+    textAlignVertical: "top",
+  },
+  feedbackRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 10,
+  },
+  feedbackBtn: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+  },
+  feedbackBtnText: {
+    color: colors.text,
+    fontWeight: "700",
+  },
+  feedbackSendBtn: {
+    flex: 1,
+    marginTop: 0,
+    padding: 14,
+  },
+  feedbackFilesList: {
+    marginBottom: 8,
+    gap: 8,
+  },
+  feedbackFileItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceSoft,
+    borderWidth: 1,
+    borderColor: colors.surfaceMuted,
+  },
+  feedbackFileText: {
+    color: colors.text,
+    flex: 1,
+    marginRight: 10,
+    fontSize: 13,
+  },
+  feedbackFileRemove: {
+    color: colors.danger,
+    fontWeight: "700",
+    fontSize: 12,
+  },
   disabled: { opacity: 0.5 },
   signOut: { marginTop: 28, padding: 14, alignItems: "center" },
   signOutText: { color: colors.danger, fontSize: 16, fontWeight: "700" },

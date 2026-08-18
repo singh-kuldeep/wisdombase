@@ -220,3 +220,30 @@ export function deleteAccount(): Promise<{
 }> {
   return request("/account/delete", { method: "POST" });
 }
+
+export async function submitCriticalFeedback(input: {
+  message: string;
+  assets?: PickedFile[];
+}): Promise<{ ok: boolean; message: string }> {
+  const form = new FormData();
+  form.append("message", input.message);
+
+  for (const a of input.assets ?? []) {
+    if (Platform.OS === "web") {
+      const blob = await (await fetch(a.uri)).blob();
+      form.append("files", blob, a.name);
+    } else {
+      // @ts-expect-error RN FormData file part shape
+      form.append("files", { uri: a.uri, name: a.name, type: a.mimeType || "application/octet-stream" });
+    }
+  }
+
+  const res = await fetch(buildUrl("/feedback"), {
+    method: "POST",
+    headers: { ...(await authHeader()) },
+    body: form,
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.detail ?? `Request failed (${res.status})`);
+  return body as { ok: boolean; message: string };
+}
