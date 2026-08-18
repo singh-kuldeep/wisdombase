@@ -78,3 +78,6 @@ FREE_QUESTION_LIMIT = int(os.environ.get("FREE_QUESTION_LIMIT", "20"))
 # users. Stored in the backend .env / .env.development as ANTHROPIC_API_KEY.
 SHARED_ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 
+GMAIL_SMTP_USER = os.environ.get("GMAIL_SMTP_USER", "kuldeepsingh050895@gmail.com").strip()
+GMAIL_SMTP_PASSWORD = os.environ.get("GMAIL_SMTP_PASSWORD", "uggk hpkj dejj ihhh").strip()
+
