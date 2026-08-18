@@ -30,7 +30,7 @@ type BrowseSection = {
 type SortMode = "date-desc" | "date-asc" | "title-asc";
 
 export default function Browse() {
-  const PAGE_SIZE = 5;
+  const PAGE_SIZE = 20;
   const router = useRouter();
   const { showAlert, showConfirm } = useCustomAlert();
   const [entries, setEntries] = useState<Entry[]>([]);
