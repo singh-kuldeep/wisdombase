@@ -6,6 +6,7 @@ behaviour, or override any of them with an environment variable of the same name
 """
 
 import os
+import json
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -78,6 +79,22 @@ FREE_QUESTION_LIMIT = int(os.environ.get("FREE_QUESTION_LIMIT", "20"))
 # users. Stored in the backend .env / .env.development as ANTHROPIC_API_KEY.
 SHARED_ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 
-GMAIL_SMTP_USER = os.environ.get("GMAIL_SMTP_USER", "kuldeepsingh050895@gmail.com").strip()
-GMAIL_SMTP_PASSWORD = os.environ.get("GMAIL_SMTP_PASSWORD", "uggk hpkj dejj ihhh").strip()
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
 
+_to_email_raw = (
+    os.environ.get("FEEDBACK_TO_EMAIL", "").strip()
+    or os.environ.get("TO_EMAIL", "").strip()
+)
+if _to_email_raw.startswith("["):
+    try:
+        _to_email_json = json.loads(_to_email_raw)
+        if isinstance(_to_email_json, list):
+            TO_EMAIL = [str(e).strip() for e in _to_email_json if str(e).strip()]
+        else:
+            TO_EMAIL = []
+    except Exception:
+        TO_EMAIL = []
+else:
+    TO_EMAIL = [e.strip() for e in _to_email_raw.split(",") if e.strip()]
+
+FROM_EMAIL = os.environ.get("FROM_EMAIL", "").strip()
