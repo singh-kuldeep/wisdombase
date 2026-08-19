@@ -7,18 +7,9 @@
       "main": true
     }
   },
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "excludeFiles": "docs/**|tests/**|venv/**|scripts/**|migrations/**|*.md|*.pdf|__pycache__/**"
-      }
-    }
-  ],
   "functions": {
     "api/index.py": {
-      "excludeFiles": "{tests/**,__tests__/**,**/*.test.py,**/test_*.py,fixtures/**,__fixtures__/**,testdata/**,sample-data/**,static/**,assets/**}"
+      "excludeFiles": "{docs/**,tests/**,__tests__/**,**/*.test.py,**/test_*.py,venv/**,scripts/**,migrations/**,*.md,*.pdf,__pycache__/**}"
     }
   },
   "routes": [
