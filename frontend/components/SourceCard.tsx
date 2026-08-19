@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import type { Source } from "../lib/api";
 import { useTheme } from "../app/theme-context";
 import { fonts } from "../theme";
+import { formatDateLabel } from "../app/utils/dateUtils";
 
 export default function SourceCard({
   source,
@@ -25,7 +26,7 @@ export default function SourceCard({
         <Text style={styles.title} numberOfLines={1}>
           {source.title}
         </Text>
-        {!!source.date && <Text style={styles.date}>{source.date}</Text>}
+        {!!source.date && <Text style={styles.date}>{formatDateLabel(source.date)}</Text>}
       </View>
       <Text style={styles.snippet} numberOfLines={3}>
         {source.snippet}
@@ -39,7 +40,8 @@ function createStyles(colors: typeof import("../theme").colors) {
     card: {
       backgroundColor: colors.surface,
       borderRadius: 16,
-      padding: 14,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
       marginTop: 10,
       borderWidth: 1,
       borderColor: colors.border,
@@ -50,8 +52,8 @@ function createStyles(colors: typeof import("../theme").colors) {
       elevation: 4,
     },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
-  title: { fontWeight: "700", color: colors.text, flex: 1, marginRight: 8, fontSize: 15 },
+  title: { fontWeight: "700", color: colors.text, flex: 1, marginRight: 8, fontSize: 14 },
   date: { color: colors.muted, fontSize: 12 },
-  snippet: { color: colors.muted, fontFamily: fonts.serif, fontSize: 14, lineHeight: 21 },
+  snippet: { color: colors.muted, fontFamily: fonts.serif, fontSize: 14, lineHeight: 20 },
   });
 }
