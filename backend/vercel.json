@@ -1,9 +1,19 @@
 {
   "version": 2,
+  "git": {
+    "deploymentEnabled": {
+      "*": false,
+      "dev": true,
+      "main": true
+    }
+  },
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "excludeFiles": "docs/**|tests/**|venv/**|scripts/**|migrations/**|*.md|*.pdf|__pycache__/**"
+      }
     }
   ],
   "routes": [
