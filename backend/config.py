@@ -78,3 +78,5 @@ FREE_QUESTION_LIMIT = int(os.environ.get("FREE_QUESTION_LIMIT", "20"))
 # users. Stored in the backend .env / .env.development as ANTHROPIC_API_KEY.
 SHARED_ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 
+# Gemini / Google key used for fast, lightweight 384-dimensional vector embeddings.
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY", "").strip()
