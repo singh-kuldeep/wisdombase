@@ -36,6 +36,30 @@ class RagRetrievalTests(unittest.TestCase):
         self.assertEqual(results[0]["entry_id"], "e1")
         self.assertEqual(results[0]["snippet"], "i like to eat mango")
 
+    def test_retrieve_filters_equal_similarity_zero_overlap_chunks(self):
+        mock_supabase = MagicMock()
+
+        # Simulate match_chunks RPC output where database stored vectors all have sim = 0.546
+        mock_rpc = MagicMock()
+        mock_rpc.execute.return_value.data = [
+            {"id": "c1", "entry_id": "e1", "content": "i like to eat mango", "similarity": 0.546},
+            {"id": "c2", "entry_id": "e2", "content": "I joined zeno health on 2021 to left organization...", "similarity": 0.546},
+            {"id": "c3", "entry_id": "e3", "content": "Suraj jaiswal CV: lead frontend and backend activity", "similarity": 0.546},
+        ]
+        mock_supabase.rpc.return_value = mock_rpc
+
+        mock_table = MagicMock()
+        mock_table.select.return_value.in_.return_value.execute.return_value.data = [
+            {"id": "e1", "title": "Untitled", "created_at": "2026-08-19T10:00:00Z", "group_name": "Personal"},
+        ]
+        mock_supabase.table.return_value = mock_table
+
+        results = retrieve(mock_supabase, "user-123", "i like to eat mango")
+
+        # Entries 2 and 3 have zero matching non-stopword tokens ("like", "eat", "mango") and sim < 0.65 -> filtered out
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["entry_id"], "e1")
+
 
 if __name__ == "__main__":
     unittest.main()
