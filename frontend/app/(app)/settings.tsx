@@ -169,7 +169,24 @@ export default function Settings() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.label}>Signed in as</Text>
-      <Text style={styles.value}>{session?.user.email ?? session?.user.phone}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+<Text style={styles.value}>{session?.user.email ?? session?.user.phone}</Text>
+      <TouchableOpacity
+        style={styles.signOut}
+        onPress={async () => {
+          try {
+            await signOut();
+            router.replace("/(auth)/sign-in");
+          } catch (e) {
+            await showAlert({ title: "Sign out failed", message: (e as Error).message });
+          }
+        }}
+      >
+        <Text style={styles.signOutText}>Sign out</Text>
+      </TouchableOpacity>
+        </View>
+      
+      <View style={styles.sectionDivider} />
 
       <Text style={[styles.label, styles.section]}>Critical Feedback</Text>
       <Text style={styles.hint}>
@@ -216,6 +233,7 @@ export default function Settings() {
           ))}
         </View>
       ) : null}
+      <View style={styles.sectionDivider} />
 
       <Text style={[styles.label, styles.section]}>AI provider keys</Text>
       <Text style={styles.hint}>
@@ -271,6 +289,7 @@ export default function Settings() {
       <TouchableOpacity style={styles.primary} onPress={save}>
         <Text style={styles.primaryText}>Save keys</Text>
       </TouchableOpacity>
+      <View style={styles.sectionDivider} />
 
       <Text style={[styles.label, styles.section]}>Long-term memory</Text>
       <Text style={styles.hint}>
@@ -296,21 +315,9 @@ export default function Settings() {
           <Text style={styles.secondaryBtnText}>{memory ? "Refresh memory" : "Build memory profile"}</Text>
         )}
       </TouchableOpacity>
+      <View style={styles.sectionDivider} />
 
-      <TouchableOpacity
-        style={styles.signOut}
-        onPress={async () => {
-          try {
-            await signOut();
-            router.replace("/(auth)/sign-in");
-          } catch (e) {
-            await showAlert({ title: "Sign out failed", message: (e as Error).message });
-          }
-        }}
-      >
-        <Text style={styles.signOutText}>Sign out</Text>
-      </TouchableOpacity>
-
+      
 
       <Text style={[styles.label, styles.section]}>Danger Zone</Text>
       <Text style={styles.hint}>
@@ -391,16 +398,23 @@ function createStyles(colors: typeof import("../../theme").colors) {
   return StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 20, paddingBottom: 32 },
-  label: { fontSize: 13, color: colors.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 },
+  label: { fontSize: 13, color: colors.muted, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 0 },
   value: { fontSize: 17, color: colors.text, marginTop: 4 },
-  section: { marginTop: 28 },
+  section: { marginTop: 25 },
+  sectionDivider: {
+    height: 1,
+    backgroundColor: colors.surfaceMuted,
+    marginTop: 15,
+    marginBottom: 0,
+    opacity: 0.9,
+  },
   hint: { fontSize: 13, color: colors.muted, lineHeight: 20, marginTop: 6, marginBottom: 14 },
   providerCard: {
     backgroundColor: colors.surface,
     borderColor: colors.surfaceMuted,
     borderWidth: 1,
     borderRadius: 20,
-    padding: 18,
+    padding: 15,
     marginBottom: 14,
     shadowColor: colors.text,
     shadowOpacity: 0.08,
@@ -414,7 +428,7 @@ function createStyles(colors: typeof import("../../theme").colors) {
     alignItems: "center",
     marginBottom: 10,
   },
-  providerLabel: { fontSize: 16, fontWeight: "700", color: colors.text },
+  providerLabel: { fontSize: 14, fontWeight: "500", color: colors.text },
   priorityRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   priorityBadge: { fontSize: 12, fontWeight: "700", color: colors.accent },
   arrow: { fontSize: 18, color: colors.accent, fontWeight: "700" },
@@ -424,10 +438,10 @@ function createStyles(colors: typeof import("../../theme").colors) {
     borderColor: colors.surfaceMuted,
     borderWidth: 1,
     borderRadius: 14,
-    padding: 14,
-    fontSize: 15,
+    padding: 10,
+    fontSize: 14,
     color: colors.text,
-    marginTop: 8,
+    marginTop: 0,
   },
   providerHint: { fontSize: 12, color: colors.muted, marginTop: 8 },
   primary: { backgroundColor: colors.accent, borderRadius: 16, padding: 16, alignItems: "center", marginTop: 10 },
@@ -446,7 +460,7 @@ function createStyles(colors: typeof import("../../theme").colors) {
     borderColor: colors.accent,
     borderWidth: 1,
     borderRadius: 16,
-    padding: 16,
+    padding: 15,
     alignItems: "center",
     marginBottom: 8,
   },
@@ -513,12 +527,12 @@ function createStyles(colors: typeof import("../../theme").colors) {
     fontSize: 12,
   },
   disabled: { opacity: 0.5 },
-  signOut: { marginTop: 28, padding: 14, alignItems: "center" },
+  signOut: { alignItems: "center", padding:10, borderRadius: 12, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.surfaceMuted },
   signOutText: { color: colors.danger, fontSize: 16, fontWeight: "700" },
   deleteAccountBtn: {
     backgroundColor: colors.danger,
     borderRadius: 16,
-    padding: 16,
+    padding: 15,
     alignItems: "center",
     marginTop: 8,
   },

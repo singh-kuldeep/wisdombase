@@ -7,6 +7,7 @@ SendGrid, AWS SES, or other email providers.
 import os
 import base64
 import smtplib
+import config
 import ssl
 from datetime import datetime, timezone
 from email import encoders
@@ -256,19 +257,22 @@ def send_critical_feedback_email(
     attachments: list,
 ) -> Tuple[bool, str]:
     """Send critical feedback email to the configured support inbox."""
+    
     smtp_user = (
-        os.environ.get("GMAIL_SMTP_USER", "surajjaiswal97@gmail.com").strip()
+        config.GMAIL_SMTP_USER
         or os.environ.get("SMTP_EMAIL", "").strip()
         or os.environ.get("EMAIL_USER", "").strip()
     )
     smtp_password = (
-        os.environ.get("GMAIL_SMTP_APP_PASSWORD", "iure adhf fkhi xyxv").strip()
+        config.GMAIL_SMTP_PASSWORD
         or os.environ.get("SMTP_PASSWORD", "").strip()
         or os.environ.get("EMAIL_PASSWORD", "").strip()
     )
+    # Google shows app passwords with spaces for readability; SMTP expects no spaces.
+    smtp_password = smtp_password.replace(" ", "")
 
-    to_email = os.environ.get("FEEDBACK_TO_EMAIL", "").strip() or smtp_user or "support@wisdombase.in"
-    from_email = os.environ.get("FROM_EMAIL", "noreply@wisdombase.in")
+    to_email = os.environ.get("FEEDBACK_TO_EMAIL", "").strip() or smtp_user or "support@wisdombase.com"
+    from_email = os.environ.get("FROM_EMAIL", "noreply@wisdombase.com")
     sent_at = datetime.now(timezone.utc).isoformat()
     safe_user_email = user_email or "unknown"
 
