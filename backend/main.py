@@ -134,7 +134,7 @@ def account_status(req: AccountStatusRequest):
     try:
         user = _find_auth_user_by_email(supabase, email)
     except Exception:
-        raise HTTPException(status_code=500, detail="Could not check account status.")
+        raise HTTPException(status_code=500, detail="Account does not exist. Please create an account.")
 
     if not user:
         return {"exists": False, "deleted": False}
