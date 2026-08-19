@@ -10,10 +10,20 @@ Includes a fallback token-hashing implementation for offline / local testing wit
 import hashlib
 import math
 import os
+import re
 from typing import Iterable, Optional
 
 EMBEDDING_DIM = 384
 MODEL_NAME = "models/gemini-embedding-001"
+
+STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he",
+    "in", "is", "it", "its", "my", "of", "on", "or", "she", "that", "the", "to",
+    "was", "were", "will", "with", "i", "you", "your", "we", "they", "this", "have",
+    "had", "been", "do", "does", "did", "but", "not", "so", "if", "out", "up",
+    "about", "into", "than", "then", "more", "some", "such", "no", "only", "other",
+    "too", "very", "can", "just", "should", "now"
+}
 
 
 def _normalize(vec: list[float]) -> list[float]:
@@ -22,7 +32,9 @@ def _normalize(vec: list[float]) -> list[float]:
 
 
 def _tokenize(text: str) -> list[str]:
-    return [t.lower() for t in text.replace("\n", " ").split() if t]
+    words = re.findall(r"\b\w+\b", text.lower())
+    filtered = [w for w in words if w not in STOPWORDS]
+    return filtered or words
 
 
 def _hash_vector(tokens: Iterable[str], dim: int = EMBEDDING_DIM) -> list[float]:

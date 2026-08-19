@@ -32,8 +32,8 @@ Rules:
 CANDIDATE_COUNT = 24
 FINAL_COUNT = 8
 MAX_PER_ENTRY = 2
-MATCH_THRESHOLD = 0.35
-RELATIVE_SIMILARITY_CUTOFF = 0.65  # Candidates must have at least 65% of top candidate's similarity
+MATCH_THRESHOLD = 0.40
+RELATIVE_SIMILARITY_CUTOFF = 0.80  # Candidates must have at least 80% of top candidate's similarity
 
 # Re-ranking weights. Similarity stays dominant; recency and a personal-vs-generic
 # preference nudge the ordering.
