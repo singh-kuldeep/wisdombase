@@ -27,6 +27,7 @@ import LoadingDots from "../../components/LoadingDots";
 import { useEntries } from "../../stores/entryStore";
 import { useTheme } from "../theme-context";
 import { fonts } from "../../theme";
+import { formatDateLabel } from "../utils/dateUtils";
 
 export default function Ask() {
   const isFocused = useIsFocused();
@@ -233,14 +234,14 @@ export default function Ask() {
             <TouchableOpacity style={styles.backButton} onPress={() => setSelectedSource(null)}>
               <Text style={styles.backText}>← Back</Text>
             </TouchableOpacity>
-            <Text style={styles.detailTitle}>Source detail</Text>
+            {/* <Text style={styles.detailTitle}>Source detail</Text> */}
           </View>
 
           <ScrollView style={styles.detailScroll} contentContainerStyle={styles.detailContent}>
             <Text style={styles.detailEntryTitle} numberOfLines={2}>
               {sourceDetailTitle}
             </Text>
-            {!!sourceDetailDate && <Text style={styles.detailEntryDate}>{sourceDetailDate}</Text>}
+            {!!sourceDetailDate && <Text style={styles.detailEntryDate}>{formatDateLabel(sourceDetailDate)}</Text>}
             <Text style={styles.detailEntryBody}>{sourceDetailContent}</Text>
             {selectedEntry?.source ? (
               <Text style={styles.detailEntrySource}>Source: {selectedEntry.source}</Text>
@@ -294,8 +295,8 @@ export default function Ask() {
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         />
       )}
-
-      <View style={styles.bar}>
+      {selectedSource ? null : (
+        <View style={styles.bar}>
         <View style={styles.composeRow}>
           {messages.length > 0 ? (
             <TouchableOpacity
@@ -358,6 +359,8 @@ export default function Ask() {
           )}
         </View>
       </View>
+      )}
+      
     </KeyboardAvoidingView>
   );
 }
@@ -392,8 +395,8 @@ function createStyles(colors: typeof import("../../theme").colors) {
       borderColor: colors.surfaceMuted,
       borderWidth: 1,
       borderRadius: 16,
-      paddingVertical: 16,
-      paddingHorizontal: 16,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
       shadowColor: colors.text,
       shadowOpacity: 0.06,
       shadowOffset: { width: 0, height: 10 },

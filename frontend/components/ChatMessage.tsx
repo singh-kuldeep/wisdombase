@@ -160,8 +160,8 @@ function createStyles(colors: typeof import("../theme").colors) {
   assistantWrap: { alignSelf: "flex-start" },
   bubble: {
     borderRadius: 22,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     shadowColor: colors.bg,
     shadowOpacity: 0.3,
     shadowOffset: { width: 0, height: 12 },
@@ -173,10 +173,10 @@ function createStyles(colors: typeof import("../theme").colors) {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderLeftWidth: 5,
+    borderLeftWidth: 3,
     borderLeftColor: colors.teal,
   },
-  text: { color: colors.text, fontSize: 16, lineHeight: 24, fontFamily: fonts.serif },
+  text: { color: colors.text, fontSize: 14, lineHeight: 20, fontFamily: fonts.serif },
   userText: { color: "#fff", fontFamily: fonts.sans },
   actionsRow: {
     flexDirection: "row",
@@ -198,7 +198,7 @@ function createStyles(colors: typeof import("../theme").colors) {
   sourcesLabel: {
     color: colors.teal,
     fontSize: 12,
-    marginBottom: 8,
+    marginBottom: 0,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     fontWeight: "700",

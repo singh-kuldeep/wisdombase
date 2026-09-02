@@ -134,7 +134,7 @@ def account_status(req: AccountStatusRequest):
     try:
         user = _find_auth_user_by_email(supabase, email)
     except Exception:
-        raise HTTPException(status_code=500, detail="Could not check account status.")
+        raise HTTPException(status_code=500, detail="Account does not exist. Please create an account.")
 
     if not user:
         return {"exists": False, "deleted": False}
@@ -296,6 +296,8 @@ def ingest_urls(req: IngestUrlsRequest, user_id: str = CurrentUser):
 
 MAX_FILES_PER_REQUEST = 25
 MAX_FILE_BYTES = 12_000_000  # 12 MB per file
+MAX_FEEDBACK_FILES = 5
+MAX_FEEDBACK_FILE_BYTES = 8_000_000  # 8 MB per attachment
 
 
 @app.post("/ingest-files")
@@ -358,6 +360,69 @@ async def ingest_files(
 
     succeeded = sum(1 for r in results if r["ok"])
     return {"results": results, "succeeded": succeeded, "failed": len(results) - succeeded}
+
+
+@app.post("/feedback")
+async def submit_feedback(
+    message: str = Form(...),
+    files: Optional[List[UploadFile]] = File(None),
+    user_id: str = CurrentUser,
+):
+    """Receive critical feedback and email it to the support inbox."""
+    text = (message or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Feedback message is required.")
+
+    attachments: List[dict] = []
+    incoming_files = files or []
+    if len(incoming_files) > MAX_FEEDBACK_FILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many attachments — maximum {MAX_FEEDBACK_FILES} files.",
+        )
+
+    for f in incoming_files:
+        data = await f.read()
+        if not data:
+            continue
+        if len(data) > MAX_FEEDBACK_FILE_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Attachment '{f.filename or 'file'}' is too large (max 8 MB).",
+            )
+        attachments.append(
+            {
+                "filename": f.filename or "attachment",
+                "content_type": f.content_type or "application/octet-stream",
+                "data": data,
+            }
+        )
+
+    supabase = get_supabase()
+    user_email = None
+    try:
+        user_resp = supabase.auth.admin.get_user_by_id(user_id)
+        user_email = user_resp.user.email if user_resp and user_resp.user else None
+    except Exception:
+        user_email = None
+
+    sent, reason = _send_critical_feedback_email(
+        user_id=user_id,
+        user_email=user_email,
+        message=text,
+        attachments=attachments,
+    )
+
+    if not sent:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Feedback received but could not be emailed right now. "
+                f"Reason: {reason}"
+            ),
+        )
+
+    return {"ok": True, "message": "Thanks for your feedback. Our team has received it."}
 
 
 @app.post("/seed-generic")
@@ -759,3 +824,21 @@ def _send_account_deletion_email(email: str):
     """Send account deletion confirmation email."""
     from email_service import send_account_deletion_email
     return send_account_deletion_email(email)
+
+
+def _send_critical_feedback_email(
+    *,
+    user_id: str,
+    user_email: Optional[str],
+    message: str,
+    attachments: List[dict],
+):
+    """Send critical feedback email to support inbox."""
+    from email_service import send_critical_feedback_email
+
+    return send_critical_feedback_email(
+        user_id=user_id,
+        user_email=user_email,
+        message=message,
+        attachments=attachments,
+    )

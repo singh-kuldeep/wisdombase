@@ -1,11 +1,46 @@
 """Email service for sending transactional emails.
 
-Uses Supabase Auth's built-in email service or can be configured to use
-SendGrid, AWS SES, or other email providers.
+Uses Resend API for transactional delivery.
 """
 
 import os
-from typing import Optional
+import base64
+import config
+import json
+from datetime import datetime, timezone
+from email.utils import parseaddr
+from typing import Optional, Tuple
+from urllib import error, request
+
+
+def _normalize_recipients(raw: object) -> list[str]:
+    """Convert raw env/config recipient values into clean email strings."""
+    items: list[str] = []
+    if isinstance(raw, list):
+        items = [str(v).strip() for v in raw if str(v).strip()]
+    elif isinstance(raw, str):
+        text = raw.strip()
+        if not text:
+            items = []
+        elif text.startswith("["):
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, list):
+                    items = [str(v).strip() for v in parsed if str(v).strip()]
+            except Exception:
+                items = []
+        else:
+            items = [p.strip() for p in text.split(",") if p.strip()]
+
+    normalized: list[str] = []
+    for item in items:
+        _, addr = parseaddr(item)
+        email = (addr or item).strip().strip('"').strip("'")
+        if email.startswith("[") and email.endswith("]"):
+            email = email[1:-1].strip().strip('"').strip("'")
+        if "@" in email and " " not in email:
+            normalized.append(email)
+    return normalized
 
 
 def send_account_deletion_email(email: str) -> bool:
@@ -153,25 +188,25 @@ Thank you for using WisdomBase.
 This is an automated message. Please do not reply to this email.
     """
 
-    # Option 1: Use SendGrid
-    sendgrid_key = os.environ.get("SENDGRID_API_KEY")
-    if sendgrid_key:
-        try:
-            result = _send_via_sendgrid(email, subject, html_body, text_body, sendgrid_key)
-            if result:
-                return True
-        except Exception as e:
-            print(f"SendGrid error (falling back): {e}")
+    resend_api_key = config.RESEND_API_KEY
+    to_email = [email]
+    from_email = config.FROM_EMAIL or "onboarding@resend.dev"
 
-    # Option 2: Use AWS SES
-    aws_region = os.environ.get("AWS_REGION")
-    if aws_region:
+    # Option 1: Use Resend API
+    if resend_api_key:
         try:
-            result = _send_via_ses(email, subject, html_body, text_body, aws_region)
+            result = _send_via_resend(
+                to_emails=to_email,
+                from_email=from_email,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body,
+                api_key=resend_api_key,
+            )
             if result:
                 return True
         except Exception as e:
-            print(f"AWS SES error (falling back): {e}")
+            print(f"Resend error (falling back): {e}")
 
     # Option 3: Log to console (development/fallback only).
     # This is not an actual email send.
@@ -189,52 +224,151 @@ This is an automated message. Please do not reply to this email.
         return False
 
 
-def _send_via_sendgrid(to_email: str, subject: str, html_body: str, text_body: str, api_key: str) -> bool:
-    """Send email via SendGrid."""
-    try:
-        from sendgrid import SendGridAPIClient
-        from sendgrid.helpers.mail import Mail, Email, To, Content
+def _send_via_resend(
+    *,
+    to_emails: list[str],
+    from_email: str,
+    subject: str,
+    html_body: str,
+    text_body: str,
+    api_key: str,
+    attachments: Optional[list] = None,
+) -> bool:
+    fallback_from_email = "onboarding@resend.dev"
 
-        message = Mail(
-            from_email=Email(os.environ.get("FROM_EMAIL", "noreply@wisdombase.com")),
-            to_emails=To(to_email),
-            subject=subject,
-            plain_text_content=Content("text/plain", text_body),
-            html_content=Content("text/html", html_body)
+    def _post(payload: dict) -> bool:
+        req = request.Request(
+            "https://api.resend.com/emails",
+            data=json.dumps(payload).encode("utf-8"),
+            method="POST",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": "wisdombase-backend/1.0",
+            },
         )
+        with request.urlopen(req, timeout=20) as response:
+            return response.status in (200, 201, 202)
 
-        sg = SendGridAPIClient(api_key)
-        response = sg.send(message)
+    payload = {
+        "from": from_email,
+        "to": to_emails,
+        "subject": subject,
+        "html": html_body,
+        "text": text_body,
+    }
 
-        return response.status_code in [200, 201, 202]
-    except Exception as e:
-        print(f"SendGrid error: {e}")
-        return False
-
-
-def _send_via_ses(to_email: str, subject: str, html_body: str, text_body: str, region: str) -> bool:
-    """Send email via AWS SES."""
-    try:
-        try:
-            import boto3
-        except ImportError:
-            raise Exception("boto3 not installed. Install with: pip install boto3")
-
-        ses_client = boto3.client('ses', region_name=region)
-
-        response = ses_client.send_email(
-            Source=os.environ.get("FROM_EMAIL", "noreply@wisdombase.com"),
-            Destination={'ToAddresses': [to_email]},
-            Message={
-                'Subject': {'Data': subject, 'Charset': 'UTF-8'},
-                'Body': {
-                    'Text': {'Data': text_body, 'Charset': 'UTF-8'},
-                    'Html': {'Data': html_body, 'Charset': 'UTF-8'}
-                }
+    resend_attachments = []
+    for item in attachments or []:
+        resend_attachments.append(
+            {
+                "filename": item.get("filename", "attachment"),
+                "content": base64.b64encode(item.get("data", b"")).decode("utf-8"),
+                "content_type": item.get("content_type", "application/octet-stream"),
             }
         )
+    if resend_attachments:
+        payload["attachments"] = resend_attachments
 
-        return response['ResponseMetadata']['HTTPStatusCode'] == 200
+    try:
+        return _post(payload)
+    except error.HTTPError as e:
+        details = e.read().decode("utf-8", errors="ignore")
+        if e.code == 403 and "domain is not verified" in details.lower() and from_email != fallback_from_email:
+            # Dev-safe fallback: try Resend onboarding sender if custom domain/sender is not verified yet.
+            retry_payload = {**payload, "from": fallback_from_email}
+            try:
+                return _post(retry_payload)
+            except error.HTTPError as retry_err:
+                retry_details = retry_err.read().decode("utf-8", errors="ignore")
+                raise Exception(
+                    "Resend rejected FROM_EMAIL domain. Verify your sender domain in Resend, "
+                    "or use FROM_EMAIL=onboarding@resend.dev for testing (recipient must usually be your Resend account email). "
+                    f"Retry details: {retry_details}"
+                )
+            except Exception as retry_err:
+                raise Exception(
+                    "Resend rejected FROM_EMAIL domain and onboarding fallback failed. "
+                    f"Retry error: {retry_err}"
+                )
+        if e.code == 403 and "1010" in details:
+            raise Exception(
+                "Resend denied the request (403/1010). Check that RESEND_API_KEY is active, "
+                "FROM_EMAIL is a verified sender/domain in Resend, and if using onboarding@resend.dev "
+                "you are sending only to your Resend account email."
+            )
+        raise Exception(f"Resend HTTP {e.code}: {details}")
     except Exception as e:
-        print(f"AWS SES error: {e}")
-        return False
+        raise Exception(f"Resend send failed: {e}")
+
+
+def send_critical_feedback_email(
+    *,
+    user_id: str,
+    user_email: Optional[str],
+    message: str,
+    attachments: list[dict],
+) -> Tuple[bool, str]:
+    """Send critical feedback email to the configured support inbox."""
+
+    resend_api_key = config.RESEND_API_KEY
+    to_email = _normalize_recipients(config.TO_EMAIL)
+    from_email = config.FROM_EMAIL or "onboarding@resend.dev"
+    sent_at = datetime.now(timezone.utc).isoformat()
+    safe_user_email = user_email or "unknown"
+
+    subject = f"[Critical Feedback] User {safe_user_email}"
+    attach_names = ", ".join(a.get("filename", "attachment") for a in attachments) or "None"
+
+    html_body = f"""
+    <h2>Critical Feedback Received</h2>
+    <p><strong>User ID:</strong> {user_id}</p>
+    <p><strong>User Email:</strong> {safe_user_email}</p>
+    <p><strong>Submitted At (UTC):</strong> {sent_at}</p>
+    <p><strong>Attachments:</strong> {attach_names}</p>
+    <hr />
+    <p style=\"white-space: pre-wrap;\">{message}</p>
+    """
+
+    text_body = (
+        "Critical Feedback Received\n\n"
+        f"User ID: {user_id}\n"
+        f"User Email: {safe_user_email}\n"
+        f"Submitted At (UTC): {sent_at}\n"
+        f"Attachments: {attach_names}\n\n"
+        "Message:\n"
+        f"Description:\n{message}\n"
+    )
+
+    if not to_email:
+        return False, "Feedback recipient missing/invalid. Set FEEDBACK_TO_EMAIL (e.g. you@example.com) or TO_EMAIL."
+
+    if resend_api_key:
+        try:
+            if _send_via_resend(
+                to_emails=to_email,
+                from_email=from_email,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body,
+                api_key=resend_api_key,
+                attachments=attachments,
+            ):
+                return True, "sent via Resend"
+        except Exception as e:
+            print(f"Resend feedback error (falling back): {e}")
+            return False, f"Resend: {e}"
+
+    if not resend_api_key:
+        return False, "Resend API key missing. Set RESEND_API_KEY."
+
+    # Option 4: Console fallback
+    print("\n" + "=" * 60)
+    print("CRITICAL FEEDBACK EMAIL (not sent, console fallback)")
+    print("=" * 60)
+    print(f"To: {to_email}")
+    print(f"Subject: {subject}")
+    print(text_body)
+    print("=" * 60 + "\n")
+    return False, "Resend email failed"

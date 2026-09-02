@@ -3,7 +3,7 @@ export const colors = {
   bg: "#F6F7FA",
   surface: "#FFFFFF",
   surfaceSoft: "#F4F7FB",
-  surfaceMuted: "#EBF1F8",
+  surfaceMuted: "#d3d4f5",
   text: "#111827",
   muted: "#5e6090",
   accent: "#777ae8",
