@@ -32,8 +32,7 @@ Rules:
 CANDIDATE_COUNT = 24
 FINAL_COUNT = 8
 MAX_PER_ENTRY = 2
-MATCH_THRESHOLD = 0.35
-RELATIVE_SIMILARITY_CUTOFF = 0.65  # Candidates must have at least 65% of top candidate's similarity
+MATCH_THRESHOLD = 0.25
 
 # Re-ranking weights. Similarity stays dominant; recency and a personal-vs-generic
 # preference nudge the ordering.
@@ -75,13 +74,6 @@ def retrieve(supabase, user_id: str, question: str) -> list[dict]:
     ).execute()
 
     rows = matches.data or []
-    if not rows:
-        return []
-
-    # Relative similarity filtering: drop noise chunks that lag far behind the top match.
-    max_sim = max((r.get("similarity") or 0.0) for r in rows)
-    min_required_sim = max(MATCH_THRESHOLD, max_sim * RELATIVE_SIMILARITY_CUTOFF)
-    rows = [r for r in rows if (r.get("similarity") or 0.0) >= min_required_sim]
     if not rows:
         return []
 
