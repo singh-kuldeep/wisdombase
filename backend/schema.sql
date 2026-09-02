@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS public.chunks (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS chunks_embedding_idx ON public.chunks
-  USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+CREATE INDEX IF NOT EXISTS chunks_embedding_hnsw_idx ON public.chunks
+  USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);
 CREATE INDEX IF NOT EXISTS idx_chunks_user_id ON public.chunks(user_id);
 CREATE INDEX IF NOT EXISTS idx_entries_user_id ON public.entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_entries_group ON public.entries(user_id, group_name);

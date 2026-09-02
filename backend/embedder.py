@@ -10,10 +10,46 @@ Includes a fallback token-hashing implementation for offline / local testing wit
 import hashlib
 import math
 import os
+from collections import OrderedDict
 from typing import Iterable, Optional
 
 EMBEDDING_DIM = 384
 MODEL_NAME = "models/gemini-embedding-001"
+
+_CACHE_MAX_SIZE = 2048
+_EMBEDDING_CACHE: OrderedDict[str, list[float]] = OrderedDict()
+_CACHE_STATS = {"hits": 0, "misses": 0}
+
+
+def clear_embedding_cache() -> None:
+    """Clear the in-memory embedding cache and reset statistics."""
+    _EMBEDDING_CACHE.clear()
+    _CACHE_STATS["hits"] = 0
+    _CACHE_STATS["misses"] = 0
+
+
+def get_cache_stats() -> dict[str, int]:
+    """Return stats on embedding cache hits, misses, and current size."""
+    return {
+        "hits": _CACHE_STATS["hits"],
+        "misses": _CACHE_STATS["misses"],
+        "size": len(_EMBEDDING_CACHE),
+    }
+
+
+def _get_from_cache(cleaned_text: str) -> Optional[list[float]]:
+    if cleaned_text in _EMBEDDING_CACHE:
+        _EMBEDDING_CACHE.move_to_end(cleaned_text)
+        _CACHE_STATS["hits"] += 1
+        return list(_EMBEDDING_CACHE[cleaned_text])
+    return None
+
+
+def _put_to_cache(cleaned_text: str, vec: list[float]) -> None:
+    _EMBEDDING_CACHE[cleaned_text] = list(vec)
+    _EMBEDDING_CACHE.move_to_end(cleaned_text)
+    if len(_EMBEDDING_CACHE) > _CACHE_MAX_SIZE:
+        _EMBEDDING_CACHE.popitem(last=False)
 
 
 def _normalize(vec: list[float]) -> list[float]:
@@ -44,9 +80,16 @@ def _get_gemini_api_key() -> Optional[str]:
 
 
 def embed_one(text: str) -> list[float]:
-    """Embed a single string into a 384-dim normalized vector."""
+    """Embed a single string into a 384-dim normalized vector (cached)."""
     if not text or not text.strip():
         return [0.0] * EMBEDDING_DIM
+
+    cleaned = text.strip()
+    cached = _get_from_cache(cleaned)
+    if cached is not None:
+        return cached
+
+    _CACHE_STATS["misses"] += 1
 
     api_key = _get_gemini_api_key()
     if api_key:
@@ -56,24 +99,55 @@ def embed_one(text: str) -> list[float]:
             genai.configure(api_key=api_key)
             res = genai.embed_content(
                 model=MODEL_NAME,
-                content=text,
+                content=cleaned,
                 output_dimensionality=EMBEDDING_DIM,
             )
             raw_embedding = res.get("embedding")
             if raw_embedding and isinstance(raw_embedding, list):
-                return _normalize(raw_embedding)
+                norm_vec = _normalize(raw_embedding)
+                _put_to_cache(cleaned, norm_vec)
+                return norm_vec
         except Exception:
             pass
 
-    return _hash_vector(_tokenize(text))
+    fallback_vec = _hash_vector(_tokenize(cleaned))
+    _put_to_cache(cleaned, fallback_vec)
+    return fallback_vec
 
 
 def embed_many(texts: list[str]) -> list[list[float]]:
-    """Embed a batch of strings into 384-dim normalized vectors."""
+    """Embed a batch of strings into 384-dim normalized vectors with caching."""
     if not texts:
         return []
 
+    results: list[Optional[list[float]]] = [None] * len(texts)
+    missing_text_indices: dict[str, list[int]] = {}
+
+    for i, raw_text in enumerate(texts):
+        cleaned = (raw_text or "").strip()
+        if not cleaned:
+            results[i] = [0.0] * EMBEDDING_DIM
+            continue
+
+        cached = _get_from_cache(cleaned)
+        if cached is not None:
+            results[i] = cached
+        else:
+            if cleaned not in missing_text_indices:
+                missing_text_indices[cleaned] = [i]
+            else:
+                _CACHE_STATS["hits"] += 1
+                missing_text_indices[cleaned].append(i)
+
+    if not missing_text_indices:
+        return [res for res in results if res is not None]
+
+    unique_miss_texts = list(missing_text_indices.keys())
+    _CACHE_STATS["misses"] += len(unique_miss_texts)
+
     api_key = _get_gemini_api_key()
+    fetched_vecs: Optional[list[list[float]]] = None
+
     if api_key:
         try:
             import google.generativeai as genai
@@ -81,18 +155,28 @@ def embed_many(texts: list[str]) -> list[list[float]]:
             genai.configure(api_key=api_key)
             res = genai.embed_content(
                 model=MODEL_NAME,
-                content=texts,
+                content=unique_miss_texts,
                 output_dimensionality=EMBEDDING_DIM,
             )
             raw_embeddings = res.get("embedding")
             if (
                 raw_embeddings
                 and isinstance(raw_embeddings, list)
-                and len(raw_embeddings) == len(texts)
+                and len(raw_embeddings) == len(unique_miss_texts)
                 and isinstance(raw_embeddings[0], list)
             ):
-                return [_normalize(vec) for vec in raw_embeddings]
+                fetched_vecs = [_normalize(vec) for vec in raw_embeddings]
         except Exception:
             pass
 
-    return [embed_one(text) for text in texts]
+    if fetched_vecs is None:
+        fetched_vecs = [_hash_vector(_tokenize(txt)) for txt in unique_miss_texts]
+
+    for txt, vec in zip(unique_miss_texts, fetched_vecs):
+        _put_to_cache(txt, vec)
+        for orig_idx in missing_text_indices[txt]:
+            results[orig_idx] = vec
+
+    return [res for res in results if res is not None]
+
+
