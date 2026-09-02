@@ -11,7 +11,7 @@ memory profile.
 from datetime import datetime, timezone
 from typing import Optional
 
-from embedder import _tokenize, embed_one
+from embedder import embed_one
 
 SYSTEM_PROMPT = """You are the user's personal knowledge assistant. You have access to
 their past journal entries, ideas, and notes. Your role is to help
@@ -75,23 +75,6 @@ def retrieve(supabase, user_id: str, question: str) -> list[dict]:
     ).execute()
 
     rows = matches.data or []
-    if not rows:
-        return []
-
-    # Keyword/token overlap check against non-stopword query tokens.
-    q_tokens = _tokenize(question)
-
-    # Drop false-positive noise chunks: if similarity < 0.65 and zero query tokens match, drop it.
-    filtered_rows = []
-    for r in rows:
-        sim = r.get("similarity") or 0.0
-        content = (r.get("content") or "").lower()
-        overlap_count = sum(1 for t in q_tokens if t in content) if q_tokens else 1
-        if sim < 0.65 and overlap_count == 0:
-            continue
-        filtered_rows.append(r)
-
-    rows = filtered_rows
     if not rows:
         return []
 
